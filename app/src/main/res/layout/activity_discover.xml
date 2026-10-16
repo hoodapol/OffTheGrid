@@ -14,6 +14,13 @@
         android:textSize="20sp"
         android:textStyle="bold" />
 
+    <Button
+        android:id="@+id/btnWifi"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_marginBottom="8dp"
+        android:text="Open Wi-Fi settings" />
+
     <ListView
         android:id="@+id/listPeers"
         android:layout_width="match_parent"

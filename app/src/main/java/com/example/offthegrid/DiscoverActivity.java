@@ -13,6 +13,9 @@ import java.util.List;
 
 import android.content.Intent;
 
+import android.provider.Settings;
+import android.widget.Toast;
+import android.content.ActivityNotFoundException;
 public class DiscoverActivity extends AppCompatActivity {
     private static final String TAG = "DiscoverActivity";
 
@@ -36,6 +39,17 @@ public class DiscoverActivity extends AppCompatActivity {
             intent.putExtra(ChatActivity.EXTRA_PEER_NAME, peers.get(position));
             startActivity(intent);
         });
+
+        binding.btnWifi.setOnClickListener(v -> openWifiSettings());
+    }
+
+    private void openWifiSettings() {
+        Intent intent = new Intent(Settings.ACTION_WIFI_SETTINGS);
+        try {
+            startActivity(intent);
+        } catch (ActivityNotFoundException e) {
+            Toast.makeText(this, "No Wi-Fi settings screen found", Toast.LENGTH_SHORT).show();
+        }
     }
 
     @Override

@@ -29,6 +29,15 @@ public class ChatActivity extends AppCompatActivity {
         if (getSupportActionBar() != null) {
             getSupportActionBar().setDisplayHomeAsUpEnabled(true);
         }
+        binding.btnSend.setOnClickListener(v -> sendMessage());
+    }
+
+    private void sendMessage() {
+        String text = binding.etMessage.getText().toString().trim();
+        if (text.isEmpty()) return;
+        binding.tvMessages.append("Me: " + text + "\n");
+        binding.etMessage.setText("");
+        Log.d(TAG, "sent: " + text);
     }
 
     @Override
