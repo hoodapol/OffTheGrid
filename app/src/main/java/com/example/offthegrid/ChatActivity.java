@@ -7,12 +7,16 @@ import androidx.appcompat.app.AppCompatActivity;
 
 import com.example.offthegrid.databinding.ActivityChatBinding;
 import androidx.recyclerview.widget.LinearLayoutManager;
+import android.view.Menu;
+import android.view.MenuItem;
+
 public class ChatActivity extends AppCompatActivity {
     private static final String TAG = "ChatActivity";
     public static final String EXTRA_PEER_NAME = "peer_name";
 
     private ActivityChatBinding binding;
     private MessageAdapter adapter;
+    private String peerName;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -21,7 +25,7 @@ public class ChatActivity extends AppCompatActivity {
         binding = ActivityChatBinding.inflate(getLayoutInflater());
         setContentView(binding.getRoot());
 
-        String peerName = getIntent().getStringExtra(EXTRA_PEER_NAME);
+        peerName = getIntent().getStringExtra(EXTRA_PEER_NAME);
         if (peerName == null) peerName = "Unknown";
 
         setTitle(peerName);
@@ -86,5 +90,21 @@ public class ChatActivity extends AppCompatActivity {
     public boolean onSupportNavigateUp() {
         finish();
         return true;
+    }
+
+    @Override
+    public boolean onCreateOptionsMenu(Menu menu) {
+        getMenuInflater().inflate(R.menu.menu_chat, menu);
+        return true;
+    }
+
+    @Override
+    public boolean onOptionsItemSelected(MenuItem item) {
+        if (item.getItemId() == R.id.action_incoming) {
+            adapter.add(new Message("Hello from " + peerName, false));
+            binding.rvMessages.scrollToPosition(adapter.getItemCount() - 1);
+            return true;
+        }
+        return super.onOptionsItemSelected(item);
     }
 }

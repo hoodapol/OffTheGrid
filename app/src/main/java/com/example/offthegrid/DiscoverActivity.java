@@ -1,26 +1,22 @@
 package com.example.offthegrid;
 
+import android.content.ActivityNotFoundException;
+import android.content.Intent;
 import android.os.Bundle;
+import android.provider.Settings;
 import android.util.Log;
-import android.widget.ArrayAdapter;
+import android.widget.Toast;
 
 import androidx.appcompat.app.AppCompatActivity;
+import androidx.recyclerview.widget.LinearLayoutManager;
 
 import com.example.offthegrid.databinding.ActivityDiscoverBinding;
 
-import java.util.ArrayList;
-import java.util.List;
-
-import android.content.Intent;
-
-import android.provider.Settings;
-import android.widget.Toast;
-import android.content.ActivityNotFoundException;
 public class DiscoverActivity extends AppCompatActivity {
     private static final String TAG = "DiscoverActivity";
 
     private ActivityDiscoverBinding binding;
-    private final List<String> peers = new ArrayList<>();
+    private PeerAdapter adapter;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -30,17 +26,18 @@ public class DiscoverActivity extends AppCompatActivity {
         binding = ActivityDiscoverBinding.inflate(getLayoutInflater());
         setContentView(binding.getRoot());
 
-        peers.add("Test Peer");
-        binding.listPeers.setAdapter(
-                new ArrayAdapter<>(this, android.R.layout.simple_list_item_1, peers));
-
-        binding.listPeers.setOnItemClickListener((parent, view, position, id) -> {
-            Intent intent = new Intent(this, ChatActivity.class);
-            intent.putExtra(ChatActivity.EXTRA_PEER_NAME, peers.get(position));
-            startActivity(intent);
-        });
+        adapter = new PeerAdapter(this::openChat);
+        binding.rvPeers.setLayoutManager(new LinearLayoutManager(this));
+        binding.rvPeers.setAdapter(adapter);
+        adapter.add("Test Peer");
 
         binding.btnWifi.setOnClickListener(v -> openWifiSettings());
+    }
+
+    private void openChat(String peer) {
+        Intent intent = new Intent(this, ChatActivity.class);
+        intent.putExtra(ChatActivity.EXTRA_PEER_NAME, peer);
+        startActivity(intent);
     }
 
     private void openWifiSettings() {

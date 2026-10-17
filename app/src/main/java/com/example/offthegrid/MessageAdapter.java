@@ -22,8 +22,8 @@ public class MessageAdapter extends RecyclerView.Adapter<MessageAdapter.ViewHold
     @NonNull
     @Override
     public ViewHolder onCreateViewHolder(@NonNull ViewGroup parent, int viewType) {
-        View view = LayoutInflater.from(parent.getContext())
-                .inflate(R.layout.item_message_sent, parent, false);
+        int layout = viewType == 0 ? R.layout.item_message_sent : R.layout.item_message_received;
+        View view = LayoutInflater.from(parent.getContext()).inflate(layout, parent, false);
         return new ViewHolder(view);
     }
 
@@ -44,5 +44,10 @@ public class MessageAdapter extends RecyclerView.Adapter<MessageAdapter.ViewHold
             super(itemView);
             text = itemView.findViewById(R.id.tvText);
         }
+    }
+
+    @Override
+    public int getItemViewType(int position) {
+        return messages.get(position).isSent() ? 0 : 1;
     }
 }
