@@ -6,12 +6,13 @@ import android.util.Log;
 import androidx.appcompat.app.AppCompatActivity;
 
 import com.example.offthegrid.databinding.ActivityChatBinding;
-
+import androidx.recyclerview.widget.LinearLayoutManager;
 public class ChatActivity extends AppCompatActivity {
     private static final String TAG = "ChatActivity";
     public static final String EXTRA_PEER_NAME = "peer_name";
 
     private ActivityChatBinding binding;
+    private MessageAdapter adapter;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -29,15 +30,21 @@ public class ChatActivity extends AppCompatActivity {
         if (getSupportActionBar() != null) {
             getSupportActionBar().setDisplayHomeAsUpEnabled(true);
         }
+
+        adapter = new MessageAdapter();
+        LinearLayoutManager layoutManager = new LinearLayoutManager(this);
+        layoutManager.setStackFromEnd(true);
+        binding.rvMessages.setLayoutManager(layoutManager);
+        binding.rvMessages.setAdapter(adapter);
         binding.btnSend.setOnClickListener(v -> sendMessage());
     }
 
     private void sendMessage() {
         String text = binding.etMessage.getText().toString().trim();
         if (text.isEmpty()) return;
-        binding.tvMessages.append("Me: " + text + "\n");
+        adapter.add(new Message(text, true));
+        binding.rvMessages.scrollToPosition(adapter.getItemCount() - 1);
         binding.etMessage.setText("");
-        Log.d(TAG, "sent: " + text);
     }
 
     @Override
