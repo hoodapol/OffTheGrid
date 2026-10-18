@@ -50,4 +50,10 @@ public class MessageAdapter extends RecyclerView.Adapter<MessageAdapter.ViewHold
     public int getItemViewType(int position) {
         return messages.get(position).isSent() ? 0 : 1;
     }
+
+    public void setMessages(List<Message> newMessages) {
+        messages.clear();
+        messages.addAll(newMessages);
+        notifyDataSetChanged();
+    }
 }

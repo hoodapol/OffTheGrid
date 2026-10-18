@@ -17,6 +17,9 @@ public class ChatActivity extends AppCompatActivity {
     private ActivityChatBinding binding;
     private MessageAdapter adapter;
     private String peerName;
+    private boolean connected = false;
+
+    private ChatDbHelper db;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -40,12 +43,18 @@ public class ChatActivity extends AppCompatActivity {
         layoutManager.setStackFromEnd(true);
         binding.rvMessages.setLayoutManager(layoutManager);
         binding.rvMessages.setAdapter(adapter);
+        db = new ChatDbHelper(this);
+        adapter.setMessages(db.getMessages(peerName));
+        if (adapter.getItemCount() > 0) {
+            binding.rvMessages.scrollToPosition(adapter.getItemCount() - 1);
+        }
         binding.btnSend.setOnClickListener(v -> sendMessage());
     }
 
     private void sendMessage() {
         String text = binding.etMessage.getText().toString().trim();
         if (text.isEmpty()) return;
+        db.insertMessage(MessageStorage.ME, peerName, text, MessageStorage.STATUS_DONE);
         adapter.add(new Message(text, true));
         binding.rvMessages.scrollToPosition(adapter.getItemCount() - 1);
         binding.etMessage.setText("");
@@ -84,6 +93,7 @@ public class ChatActivity extends AppCompatActivity {
     @Override
     protected void onDestroy() {
         Log.d(TAG, "onDestroy");
+        db.close();
         super.onDestroy();
     }
     @Override
@@ -101,8 +111,15 @@ public class ChatActivity extends AppCompatActivity {
     @Override
     public boolean onOptionsItemSelected(MenuItem item) {
         if (item.getItemId() == R.id.action_incoming) {
-            adapter.add(new Message("Hello from " + peerName, false));
+            String body = "Hello from " + peerName;
+            db.insertMessage(peerName, peerName, body, MessageStorage.STATUS_DONE);
+            adapter.add(new Message(body, false));
             binding.rvMessages.scrollToPosition(adapter.getItemCount() - 1);
+            return true;
+        }
+        if (item.getItemId() == R.id.action_toggle) {
+            connected = !connected;
+            binding.statusView.setConnected(connected);
             return true;
         }
         return super.onOptionsItemSelected(item);
