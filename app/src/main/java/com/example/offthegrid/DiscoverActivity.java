@@ -11,6 +11,13 @@ import androidx.appcompat.app.AppCompatActivity;
 import androidx.recyclerview.widget.LinearLayoutManager;
 
 import com.example.offthegrid.databinding.ActivityDiscoverBinding;
+import android.Manifest;
+import android.content.pm.PackageManager;
+import android.os.Build;
+
+import androidx.activity.result.ActivityResultLauncher;
+import androidx.activity.result.contract.ActivityResultContracts;
+import androidx.core.content.ContextCompat;
 
 public class DiscoverActivity extends AppCompatActivity {
     private static final String TAG = "DiscoverActivity";
@@ -18,6 +25,22 @@ public class DiscoverActivity extends AppCompatActivity {
     private ActivityDiscoverBinding binding;
     private PeerAdapter adapter;
 
+    private final ActivityResultLauncher<String> notificationPermission =
+            registerForActivityResult(new ActivityResultContracts.RequestPermission(), granted -> {
+                if (!granted) {
+                    Toast.makeText(this,
+                            "Notifications are off, so you will not be alerted to new messages",
+                            Toast.LENGTH_LONG).show();
+                }
+            });
+
+    private void askForNotificationPermission() {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU
+                && ContextCompat.checkSelfPermission(this, Manifest.permission.POST_NOTIFICATIONS)
+                != PackageManager.PERMISSION_GRANTED) {
+            notificationPermission.launch(Manifest.permission.POST_NOTIFICATIONS);
+        }
+    }
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
@@ -32,6 +55,7 @@ public class DiscoverActivity extends AppCompatActivity {
         adapter.add("Test Peer");
 
         binding.btnWifi.setOnClickListener(v -> openWifiSettings());
+        askForNotificationPermission();
     }
 
     private void openChat(String peer) {

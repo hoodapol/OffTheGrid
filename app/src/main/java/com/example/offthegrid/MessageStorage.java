@@ -1,5 +1,5 @@
 package com.example.offthegrid;
-
+import android.net.Uri;
 public final class MessageStorage {
     private MessageStorage() {
     }
@@ -16,4 +16,7 @@ public final class MessageStorage {
     public static final int STATUS_PENDING = 1;
 
     public static final String ME = "Me";
+
+    public static final String AUTHORITY = "com.example.offthegrid.provider";
+    public static final Uri CONTENT_URI = Uri.parse("content://" + AUTHORITY + "/" + TABLE);
 }

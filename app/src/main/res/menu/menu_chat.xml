@@ -3,7 +3,7 @@
     <item
         android:id="@+id/action_incoming"
         android:showAsAction="never"
-        android:title="Simulate incoming message" />
+        android:title="Simulate incoming message (in 5 s)" />
     <item
         android:id="@+id/action_toggle"
         android:showAsAction="never"
