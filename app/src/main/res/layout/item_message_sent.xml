@@ -3,15 +3,24 @@
     android:layout_width="match_parent"
     android:layout_height="wrap_content"
     android:gravity="end"
-    android:padding="4dp">
+    android:orientation="horizontal"
+    android:paddingStart="64dp"
+    android:paddingTop="4dp"
+    android:paddingEnd="12dp"
+    android:paddingBottom="4dp">
 
     <TextView
         android:id="@+id/tvText"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:background="@drawable/bg_bubble_sent"
-        android:maxWidth="280dp"
-        android:padding="12dp"
-        android:textColor="#FFFFFF"
-        android:textSize="16sp" />
+        android:background="@drawable/bg_message_sent"
+        android:maxWidth="288dp"
+        android:paddingStart="15dp"
+        android:paddingTop="10dp"
+        android:paddingEnd="15dp"
+        android:paddingBottom="10dp"
+        android:text="@string/message_placeholder"
+        android:textColor="@color/otg_on_green"
+        android:textSize="15sp" />
+
 </LinearLayout>

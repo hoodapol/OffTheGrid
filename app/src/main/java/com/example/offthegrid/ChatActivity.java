@@ -51,7 +51,7 @@ public class ChatActivity extends AppCompatActivity {
         if (peerName == null) peerName = "Unknown";
 
         setTitle(peerName);
-        binding.tvChatWith.setText("Chat with " + peerName);
+        binding.tvChatWith.setText(peerName);
 
         if (getSupportActionBar() != null) {
             getSupportActionBar().setDisplayHomeAsUpEnabled(true);

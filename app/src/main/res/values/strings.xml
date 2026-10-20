@@ -1,3 +1,24 @@
+<?xml version="1.0" encoding="utf-8"?>
 <resources>
     <string name="app_name">OffTheGrid</string>
+    <string name="discover_title">Nearby</string>
+    <string name="discover_subtitle">Private conversations, directly between devices</string>
+    <string name="offline_label">Offline nearby chat</string>
+    <string name="offline_description">No account or internet connection required</string>
+    <string name="scan_for_peers">Open Wi-Fi settings</string>
+    <string name="nearby_people">People nearby</string>
+    <string name="nearby_people_hint">Tap a person to start chatting.</string>
+    <string name="peer_avatar">N</string>
+    <string name="peer_name_placeholder">Nearby person</string>
+    <string name="peer_status">Nearby · Tap to chat</string>
+    <string name="open_chat">›</string>
+    <string name="chat_avatar">O</string>
+    <string name="chat_with_placeholder">Private chat</string>
+    <string name="private_connection">Direct device connection</string>
+    <string name="message_hint">Message privately</string>
+    <string name="send">Send</string>
+    <string name="message_placeholder">Message</string>
+    <string name="privacy_note">Messages stay between your devices</string>
+    <string name="peer_avatar_description">Nearby person avatar</string>
+    <string name="chat_avatar_description">Chat avatar</string>
 </resources>
