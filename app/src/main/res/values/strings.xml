@@ -21,4 +21,22 @@
     <string name="privacy_note">Messages stay between your devices</string>
     <string name="peer_avatar_description">Nearby person avatar</string>
     <string name="chat_avatar_description">Chat avatar</string>
+    <string name="setup_title">Set up your profile</string>
+    <string name="setup_subtitle">Choose the name other people will see on the network. No account or internet needed.</string>
+    <string name="name_hint">Your name</string>
+    <string name="get_started">Get started</string>
+    <string name="name_required">Please enter a name</string>
+    <string name="edit_profile">Edit profile</string>
+    <string name="you_are">You are %1$s</string>
+    <string name="save">Save</string>
+    <string name="splash_logo_description">OffTheGrid logo</string>
+    <string name="tab_nearby">Nearby</string>
+    <string name="tab_chats">Chats</string>
+    <string name="tab_profile">Profile</string>
+    <string name="chats_title">Chats</string>
+    <string name="chats_subtitle">Your conversations stay on this phone.</string>
+    <string name="chats_empty">No conversations yet. Find someone in the Nearby tab to start chatting.</string>
+    <string name="profile_hint">Shown to people nearby</string>
+    <string name="posts_heading">Posts</string>
+    <string name="posts_empty">No posts yet. Posts you share will appear here.</string>
 </resources>

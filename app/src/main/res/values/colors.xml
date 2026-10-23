@@ -7,6 +7,14 @@
     <color name="teal_700">#FF018786</color>
     <color name="black">#FF000000</color>
     <color name="white">#FFFFFFFF</color>
-    <color name="otg_green">#157A5A</color>
-    <color name="otg_on_green">#FFFFFF</color>
+
+    <color name="otg_primary">#24345C</color>
+    <color name="otg_on_primary">#FFFFFF</color>
+    <color name="otg_accent">#647CE4</color>
+    <color name="otg_background">#F3F6EF</color>
+    <color name="otg_surface">#FFFFFF</color>
+    <color name="otg_text_primary">#0C142C</color>
+    <color name="otg_text_secondary">#5A6280</color>
+    <color name="otg_bar">#24345C</color>
+    <color name="otg_bar_dark">#172240</color>
 </resources>

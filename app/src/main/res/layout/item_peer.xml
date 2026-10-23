@@ -23,7 +23,7 @@
         android:contentDescription="@string/peer_avatar_description"
         android:gravity="center"
         android:text="@string/peer_avatar"
-        android:textColor="@color/otg_on_green"
+        android:textColor="@color/otg_on_primary"
         android:textSize="19sp"
         android:textStyle="bold" />
 

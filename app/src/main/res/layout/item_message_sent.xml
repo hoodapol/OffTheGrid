@@ -20,7 +20,7 @@
         android:paddingEnd="15dp"
         android:paddingBottom="10dp"
         android:text="@string/message_placeholder"
-        android:textColor="@color/otg_on_green"
+        android:textColor="@color/otg_on_primary"
         android:textSize="15sp" />
 
 </LinearLayout>

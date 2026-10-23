@@ -26,7 +26,7 @@
             android:contentDescription="@string/chat_avatar_description"
             android:gravity="center"
             android:text="@string/chat_avatar"
-            android:textColor="@color/otg_on_green"
+            android:textColor="@color/otg_on_primary"
             android:textSize="16sp"
             android:textStyle="bold" />
 

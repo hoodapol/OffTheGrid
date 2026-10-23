@@ -1,29 +1,26 @@
 package com.example.offthegrid;
 
-import android.content.ActivityNotFoundException;
+import android.Manifest;
 import android.content.Intent;
+import android.content.pm.PackageManager;
+import android.os.Build;
 import android.os.Bundle;
-import android.provider.Settings;
 import android.util.Log;
 import android.widget.Toast;
 
-import androidx.appcompat.app.AppCompatActivity;
-import androidx.recyclerview.widget.LinearLayoutManager;
-
-import com.example.offthegrid.databinding.ActivityDiscoverBinding;
-import android.Manifest;
-import android.content.pm.PackageManager;
-import android.os.Build;
-
 import androidx.activity.result.ActivityResultLauncher;
 import androidx.activity.result.contract.ActivityResultContracts;
+import androidx.appcompat.app.AppCompatActivity;
 import androidx.core.content.ContextCompat;
+import androidx.fragment.app.Fragment;
+
+import com.example.offthegrid.databinding.ActivityDiscoverBinding;
 
 public class DiscoverActivity extends AppCompatActivity {
+
     private static final String TAG = "DiscoverActivity";
 
     private ActivityDiscoverBinding binding;
-    private PeerAdapter adapter;
 
     private final ActivityResultLauncher<String> notificationPermission =
             registerForActivityResult(new ActivityResultContracts.RequestPermission(), granted -> {
@@ -41,36 +38,51 @@ public class DiscoverActivity extends AppCompatActivity {
             notificationPermission.launch(Manifest.permission.POST_NOTIFICATIONS);
         }
     }
+
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
+        if (!Profile.isSetUp(this)) {
+            startActivity(new Intent(this, SetupActivity.class));
+            finish();
+            return;
+        }
         Log.d(TAG, "onCreate");
+        Log.d(TAG, "Profile name=" + Profile.getName(this) + " id=" + Profile.getId(this));
 
         binding = ActivityDiscoverBinding.inflate(getLayoutInflater());
         setContentView(binding.getRoot());
 
-        adapter = new PeerAdapter(this::openChat);
-        binding.rvPeers.setLayoutManager(new LinearLayoutManager(this));
-        binding.rvPeers.setAdapter(adapter);
-        adapter.add("Test Peer");
+        binding.bottomNav.setOnItemSelectedListener(item -> {
+            int id = item.getItemId();
+            if (id == R.id.nav_discover) {
+                showTab(new DiscoverFragment());
+                return true;
+            }
+            if (id == R.id.nav_chats) {
+                showTab(new ChatsFragment());
+                return true;
+            }
+            if (id == R.id.nav_profile) {
+                showTab(new ProfileFragment());
+                return true;
+            }
+            return false;
+        });
+        binding.bottomNav.setOnItemReselectedListener(item -> {
+        });
 
-        binding.btnWifi.setOnClickListener(v -> openWifiSettings());
+        if (savedInstanceState == null) {
+            binding.bottomNav.setSelectedItemId(R.id.nav_discover);
+        }
         askForNotificationPermission();
     }
 
-    private void openChat(String peer) {
-        Intent intent = new Intent(this, ChatActivity.class);
-        intent.putExtra(ChatActivity.EXTRA_PEER_NAME, peer);
-        startActivity(intent);
-    }
-
-    private void openWifiSettings() {
-        Intent intent = new Intent(Settings.ACTION_WIFI_SETTINGS);
-        try {
-            startActivity(intent);
-        } catch (ActivityNotFoundException e) {
-            Toast.makeText(this, "No Wi-Fi settings screen found", Toast.LENGTH_SHORT).show();
-        }
+    private void showTab(Fragment fragment) {
+        getSupportFragmentManager()
+                .beginTransaction()
+                .replace(R.id.fragmentContainer, fragment)
+                .commit();
     }
 
     @Override

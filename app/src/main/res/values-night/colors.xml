@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <color name="otg_primary">#647CE4</color>
+    <color name="otg_on_primary">#0C142C</color>
+    <color name="otg_accent">#8DA0F2</color>
+    <color name="otg_background">#0C142C</color>
+    <color name="otg_surface">#172240</color>
+    <color name="otg_text_primary">#F3F6EF</color>
+    <color name="otg_text_secondary">#A9B0CC</color>
+    <color name="otg_bar">#172240</color>
+    <color name="otg_bar_dark">#0C142C</color>
+</resources>
