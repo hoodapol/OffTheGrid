@@ -1,31 +1,17 @@
 package com.example.offthegrid;
 
-import android.Manifest;
-import android.annotation.SuppressLint;
-import android.app.Notification;
-import android.app.NotificationChannel;
-import android.app.NotificationManager;
-import android.app.PendingIntent;
 import android.app.Service;
-import android.content.ContentValues;
 import android.content.Intent;
-import android.content.pm.PackageManager;
-import android.os.Build;
 import android.os.IBinder;
 import android.util.Log;
 
 import androidx.annotation.Nullable;
-import androidx.core.app.NotificationCompat;
-import androidx.core.app.NotificationManagerCompat;
-import androidx.core.app.TaskStackBuilder;
-import androidx.core.content.ContextCompat;
 
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 
 public class OffTheGridService extends Service {
     private static final String TAG = "OffTheGridService";
-    private static final String CHANNEL_ID = "incoming_messages";
 
     public static final String ACTION_SEND = "com.example.offthegrid.action.SEND";
     public static final String ACTION_SIMULATE_INCOMING = "com.example.offthegrid.action.SIMULATE_INCOMING";
@@ -41,7 +27,7 @@ public class OffTheGridService extends Service {
         super.onCreate();
         Log.d(TAG, "onCreate");
         io = Executors.newSingleThreadExecutor();
-        createNotificationChannel();
+        MessageSink.createChannel(this);
     }
 
     @Override
@@ -65,8 +51,8 @@ public class OffTheGridService extends Service {
     private void handle(String action, String peer, String text, long delayMs) {
         if (peer == null) return;
         if (ACTION_SEND.equals(action) && text != null) {
-            save(MessageStorage.ME, peer, text);
-            broadcastSaved(peer);
+            MessageSink.save(this, MessageStorage.ME, peer, text, MessageStorage.STATUS_DONE);
+            MessageSink.broadcastSaved(this, peer);
         } else if (ACTION_SIMULATE_INCOMING.equals(action)) {
             if (delayMs > 0) {
                 try {
@@ -76,60 +62,8 @@ public class OffTheGridService extends Service {
                     return;
                 }
             }
-            String body = "Hello from " + peer;
-            save(peer, peer, body);
-            broadcastSaved(peer);
-            notifyIncoming(peer, body);
+            MessageSink.receive(this, peer, "Hello from " + peer);
         }
-    }
-
-    private void save(String sender, String peer, String text) {
-        ContentValues values = new ContentValues();
-        values.put(MessageStorage.COL_SENDER, sender);
-        values.put(MessageStorage.COL_TEXT, text);
-        values.put(MessageStorage.COL_TIMESTAMP, System.currentTimeMillis());
-        values.put(MessageStorage.COL_PEER, peer);
-        values.put(MessageStorage.COL_STATUS, MessageStorage.STATUS_DONE);
-        getContentResolver().insert(MessageStorage.CONTENT_URI, values);
-    }
-
-    private void broadcastSaved(String peer) {
-        Intent intent = new Intent(EVENT_MESSAGE_SAVED);
-        intent.setPackage(getPackageName());
-        intent.putExtra(EXTRA_PEER, peer);
-        sendBroadcast(intent);
-    }
-
-    private void createNotificationChannel() {
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-            NotificationChannel channel = new NotificationChannel(
-                    CHANNEL_ID, "Incoming messages", NotificationManager.IMPORTANCE_DEFAULT);
-            getSystemService(NotificationManager.class).createNotificationChannel(channel);
-        }
-    }
-
-    @SuppressLint("MissingPermission")
-    private void notifyIncoming(String peer, String body) {
-        if (peer.equals(ChatActivity.visiblePeer)) return;
-        if (Build.VERSION.SDK_INT >= 33
-                && ContextCompat.checkSelfPermission(this, Manifest.permission.POST_NOTIFICATIONS)
-                != PackageManager.PERMISSION_GRANTED) {
-            return;
-        }
-        Intent open = new Intent(this, ChatActivity.class);
-        open.putExtra(ChatActivity.EXTRA_PEER_NAME, peer);
-        PendingIntent pendingIntent = TaskStackBuilder.create(this)
-                .addNextIntentWithParentStack(open)
-                .getPendingIntent(peer.hashCode(),
-                        PendingIntent.FLAG_IMMUTABLE | PendingIntent.FLAG_UPDATE_CURRENT);
-        Notification notification = new NotificationCompat.Builder(this, CHANNEL_ID)
-                .setSmallIcon(android.R.drawable.stat_notify_chat)
-                .setContentTitle(peer)
-                .setContentText(body)
-                .setContentIntent(pendingIntent)
-                .setAutoCancel(true)
-                .build();
-        NotificationManagerCompat.from(this).notify(peer.hashCode(), notification);
     }
 
     @Override

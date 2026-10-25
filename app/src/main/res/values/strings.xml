@@ -39,4 +39,5 @@
     <string name="profile_hint">Shown to people nearby</string>
     <string name="posts_heading">Posts</string>
     <string name="posts_empty">No posts yet. Posts you share will appear here.</string>
+    <string name="you_prefix">You: %1$s</string>
 </resources>
