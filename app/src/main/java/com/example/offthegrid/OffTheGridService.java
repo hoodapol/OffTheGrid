@@ -2,6 +2,7 @@ package com.example.offthegrid;
 
 import android.app.Service;
 import android.content.Intent;
+import android.net.Uri;
 import android.os.IBinder;
 import android.util.Log;
 
@@ -51,8 +52,7 @@ public class OffTheGridService extends Service {
     private void handle(String action, String peer, String text, long delayMs) {
         if (peer == null) return;
         if (ACTION_SEND.equals(action) && text != null) {
-            MessageSink.save(this, MessageStorage.ME, peer, text, MessageStorage.STATUS_DONE);
-            MessageSink.broadcastSaved(this, peer);
+            send(peer, text);
         } else if (ACTION_SIMULATE_INCOMING.equals(action)) {
             if (delayMs > 0) {
                 try {
@@ -63,6 +63,16 @@ public class OffTheGridService extends Service {
                 }
             }
             MessageSink.receive(this, peer, "Hello from " + peer);
+        }
+    }
+
+    private void send(String peer, String text) {
+        boolean networked = PeerRegistry.contains(peer);
+        int firstStatus = networked ? MessageStorage.STATUS_PENDING : MessageStorage.STATUS_DONE;
+        Uri row = MessageSink.save(this, MessageStorage.ME, peer, text, firstStatus);
+        MessageSink.broadcastSaved(this, peer);
+        if (networked && row != null && PeerClient.sendMessage(this, peer, text)) {
+            MessageSink.setStatus(this, row, MessageStorage.STATUS_DONE);
         }
     }
 
