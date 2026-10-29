@@ -73,8 +73,10 @@ public class DiscoverActivity extends AppCompatActivity {
         });
 
         if (savedInstanceState == null) {
-            binding.bottomNav.setSelectedItemId(R.id.nav_discover);
+            showTab(new DiscoverFragment());
+            binding.bottomNav.getMenu().findItem(R.id.nav_discover).setChecked(true);
         }
+        startService(new Intent(this, ListenerService.class));
         askForNotificationPermission();
     }
 
@@ -118,6 +120,9 @@ public class DiscoverActivity extends AppCompatActivity {
     @Override
     protected void onDestroy() {
         Log.d(TAG, "onDestroy");
+        if (isFinishing()) {
+            stopService(new Intent(this, ListenerService.class));
+        }
         super.onDestroy();
     }
 }

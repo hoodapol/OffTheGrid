@@ -40,4 +40,12 @@
     <string name="posts_heading">Posts</string>
     <string name="posts_empty">No posts yet. Posts you share will appear here.</string>
     <string name="you_prefix">You: %1$s</string>
+    <string name="connect_by_ip">Connect by IP address</string>
+    <string name="listening_on">This device is listening on port %1$d</string>
+    <string name="host_hint">IP address</string>
+    <string name="port_hint">Port</string>
+    <string name="connect">Connect</string>
+    <string name="enter_host_and_port">Enter an IP address and a port from 1 to 65535</string>
+    <string name="connect_failed">Could not reach that device. Check the address and that the app is open there.</string>
+    <string name="connected_to">Connected to %1$s</string>
 </resources>

@@ -28,6 +28,12 @@ public class PeerAdapter extends RecyclerView.Adapter<PeerAdapter.ViewHolder> {
         notifyItemInserted(peers.size() - 1);
     }
 
+    public void addIfMissing(String peer) {
+        if (!peers.contains(peer)) {
+            add(peer);
+        }
+    }
+
     @NonNull
     @Override
     public ViewHolder onCreateViewHolder(@NonNull ViewGroup parent, int viewType) {
