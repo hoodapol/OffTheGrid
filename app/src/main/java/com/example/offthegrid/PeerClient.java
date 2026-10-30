@@ -18,6 +18,25 @@ public final class PeerClient {
     }
 
     public static String hello(Context context, String host, int port) {
+        try {
+            return requestName(context, host, port);
+        } catch (IOException e) {
+            Log.w(TAG, "Hello to " + host + ":" + port + " failed", e);
+            return null;
+        }
+    }
+
+    public static boolean ping(Context context, String peer) {
+        PeerRegistry.Address address = PeerRegistry.get(peer);
+        if (address == null) return false;
+        try {
+            return peer.equals(requestName(context, address.host, address.port));
+        } catch (IOException e) {
+            return false;
+        }
+    }
+
+    private static String requestName(Context context, String host, int port) throws IOException {
         try (Socket socket = open(host, port);
              BufferedWriter out = Wire.writer(socket);
              BufferedReader in = Wire.reader(socket)) {
@@ -26,10 +45,8 @@ public final class PeerClient {
             if (reply != null && Wire.HELLO.equals(reply.type)) {
                 return reply.name;
             }
-        } catch (IOException e) {
-            Log.w(TAG, "Hello to " + host + ":" + port + " failed", e);
+            return null;
         }
-        return null;
     }
 
     public static boolean sendMessage(Context context, String peer, String uid, String text) {

@@ -54,7 +54,7 @@ public class StatusView extends View {
         dotPaint.setColor(connected ? 0xFF2E7D32 : 0xFF9E9E9E);
         canvas.drawCircle(dp(10), centerY, dp(6), dotPaint);
 
-        String label = connected ? "Connected" : "Offline";
+        String label = connected ? "Online" : "Offline";
         Paint.FontMetrics metrics = textPaint.getFontMetrics();
         float baseline = centerY - (metrics.ascent + metrics.descent) / 2f;
         canvas.drawText(label, dp(24), baseline, textPaint);

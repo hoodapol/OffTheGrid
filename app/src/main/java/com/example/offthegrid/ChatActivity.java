@@ -6,6 +6,8 @@ import android.content.Intent;
 import android.content.IntentFilter;
 import android.database.Cursor;
 import android.os.Bundle;
+import android.os.Handler;
+import android.os.Looper;
 import android.util.Log;
 import android.view.Menu;
 import android.view.MenuItem;
@@ -19,15 +21,21 @@ import com.example.offthegrid.databinding.ActivityChatBinding;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
 
 public class ChatActivity extends AppCompatActivity {
     private static final String TAG = "ChatActivity";
     public static final String EXTRA_PEER_NAME = "peer_name";
+    private static final long PING_INTERVAL_MS = 5000;
 
     public static volatile String visiblePeer = null;
     private ActivityChatBinding binding;
     private MessageAdapter adapter;
     private String peerName;
+    private int pingGeneration;
+    private final ExecutorService pinger = Executors.newSingleThreadExecutor();
+    private final Handler main = new Handler(Looper.getMainLooper());
 
     private final BroadcastReceiver receiver = new BroadcastReceiver() {
         @Override
@@ -39,8 +47,6 @@ public class ChatActivity extends AppCompatActivity {
             }
         }
     };
-
-    private final PeerRegistry.Listener registryListener = () -> runOnUiThread(this::updateStatus);
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -68,8 +74,19 @@ public class ChatActivity extends AppCompatActivity {
         binding.btnSend.setOnClickListener(v -> sendMessage());
     }
 
-    private void updateStatus() {
-        binding.statusView.setConnected(PeerRegistry.contains(peerName));
+    private void pingLoop(int generation) {
+        pinger.execute(() -> {
+            boolean online = PeerClient.ping(getApplicationContext(), peerName);
+            main.post(() -> {
+                if (generation != pingGeneration) return;
+                binding.statusView.setConnected(online);
+                main.postDelayed(() -> {
+                    if (generation == pingGeneration) {
+                        pingLoop(generation);
+                    }
+                }, PING_INTERVAL_MS);
+            });
+        });
     }
 
     private void loadMessages() {
@@ -187,9 +204,9 @@ public class ChatActivity extends AppCompatActivity {
         Log.d(TAG, "onStart");
         IntentFilter filter = new IntentFilter(OffTheGridService.EVENT_MESSAGE_SAVED);
         ContextCompat.registerReceiver(this, receiver, filter, ContextCompat.RECEIVER_NOT_EXPORTED);
-        PeerRegistry.addListener(registryListener);
-        updateStatus();
         loadMessages();
+        pingGeneration++;
+        pingLoop(pingGeneration);
     }
 
     @Override
@@ -209,7 +226,8 @@ public class ChatActivity extends AppCompatActivity {
     @Override
     protected void onStop() {
         Log.d(TAG, "onStop");
-        PeerRegistry.removeListener(registryListener);
+        pingGeneration++;
+        main.removeCallbacksAndMessages(null);
         unregisterReceiver(receiver);
         super.onStop();
     }
@@ -223,6 +241,7 @@ public class ChatActivity extends AppCompatActivity {
     @Override
     protected void onDestroy() {
         Log.d(TAG, "onDestroy");
+        pinger.shutdownNow();
         super.onDestroy();
     }
 }
