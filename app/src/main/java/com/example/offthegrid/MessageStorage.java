@@ -1,5 +1,7 @@
 package com.example.offthegrid;
+
 import android.net.Uri;
+
 public final class MessageStorage {
     private MessageStorage() {
     }
@@ -11,6 +13,7 @@ public final class MessageStorage {
     public static final String COL_TIMESTAMP = "timestamp";
     public static final String COL_PEER = "peer";
     public static final String COL_STATUS = "status";
+    public static final String COL_UID = "uid";
 
     public static final int STATUS_DONE = 0;
     public static final int STATUS_PENDING = 1;

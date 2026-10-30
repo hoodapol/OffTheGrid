@@ -26,6 +26,7 @@ public class ListenerService extends Service {
     private static final int READ_TIMEOUT_MS = 5000;
 
     private ExecutorService workers;
+    private NsdHelper nsdHelper;
     private volatile ServerSocket serverSocket;
     private volatile boolean running;
 
@@ -36,6 +37,8 @@ public class ListenerService extends Service {
             running = true;
             workers = Executors.newCachedThreadPool();
             workers.execute(this::acceptLoop);
+            nsdHelper = new NsdHelper(getApplicationContext());
+            nsdHelper.start();
         }
         return START_NOT_STICKY;
     }
@@ -74,14 +77,31 @@ public class ListenerService extends Service {
             Wire.Packet packet = Wire.parse(in.readLine());
             if (packet == null) return;
             if (Wire.HELLO.equals(packet.type)) {
+                rememberSender(connection, packet.name);
                 Wire.writeLine(out, Wire.hello(Profile.getName(this)));
             } else if (Wire.MSG.equals(packet.type)) {
-                MessageSink.receive(getApplicationContext(), packet.name, packet.text);
+                if (isSelf(packet.name)) return;
+                rememberSender(connection, packet.name);
+                MessageSink.receive(getApplicationContext(), packet.name, packet.text, packet.id);
+                Wire.writeLine(out, Wire.ack());
+            } else if (Wire.DEL.equals(packet.type)) {
+                if (isSelf(packet.name)) return;
+                MessageSink.deleteRemote(getApplicationContext(), packet.name, packet.id);
                 Wire.writeLine(out, Wire.ack());
             }
         } catch (IOException e) {
             Log.w(TAG, "Connection failed", e);
         }
+    }
+
+    private boolean isSelf(String name) {
+        return name != null && name.equals(Profile.getName(this));
+    }
+
+    private void rememberSender(Socket connection, String name) {
+        if (name == null || name.isEmpty() || isSelf(name)) return;
+        String host = connection.getInetAddress().getHostAddress();
+        PeerRegistry.putIfAbsent(name, host, PORT);
     }
 
     private void closeQuietly(Closeable closeable) {
@@ -97,6 +117,9 @@ public class ListenerService extends Service {
     public void onDestroy() {
         Log.d(TAG, "onDestroy");
         running = false;
+        if (nsdHelper != null) {
+            nsdHelper.stop();
+        }
         closeQuietly(serverSocket);
         if (workers != null) {
             workers.shutdownNow();

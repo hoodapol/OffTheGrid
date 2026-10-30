@@ -22,11 +22,18 @@ public class ConversationAdapter extends RecyclerView.Adapter<ConversationAdapte
         void onConversationClick(String peer);
     }
 
+    public interface OnConversationLongClickListener {
+        void onConversationLongClick(String peer);
+    }
+
     private final List<Conversation> items = new ArrayList<>();
     private final OnConversationClickListener listener;
+    private final OnConversationLongClickListener longListener;
 
-    public ConversationAdapter(OnConversationClickListener listener) {
+    public ConversationAdapter(OnConversationClickListener listener,
+                               OnConversationLongClickListener longListener) {
         this.listener = listener;
+        this.longListener = longListener;
     }
 
     public void setConversations(List<Conversation> conversations) {
@@ -54,6 +61,10 @@ public class ConversationAdapter extends RecyclerView.Adapter<ConversationAdapte
                 : item.lastText);
         holder.time.setText(formatTime(context, item.lastTimestamp));
         holder.itemView.setOnClickListener(v -> listener.onConversationClick(item.peer));
+        holder.itemView.setOnLongClickListener(v -> {
+            longListener.onConversationLongClick(item.peer);
+            return true;
+        });
     }
 
     @Override

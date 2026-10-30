@@ -12,6 +12,7 @@ import android.view.ViewGroup;
 
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
+import androidx.appcompat.app.AlertDialog;
 import androidx.fragment.app.Fragment;
 import androidx.recyclerview.widget.LinearLayoutManager;
 
@@ -37,7 +38,7 @@ public class ChatsFragment extends Fragment {
     public View onCreateView(@NonNull LayoutInflater inflater, @Nullable ViewGroup container,
                              @Nullable Bundle savedInstanceState) {
         binding = FragmentChatsBinding.inflate(inflater, container, false);
-        adapter = new ConversationAdapter(this::openChat);
+        adapter = new ConversationAdapter(this::openChat, this::confirmDeleteChat);
         binding.rvChats.setLayoutManager(new LinearLayoutManager(requireContext()));
         binding.rvChats.setAdapter(adapter);
         return binding.getRoot();
@@ -85,6 +86,16 @@ public class ChatsFragment extends Fragment {
         adapter.setConversations(list);
         binding.tvChatsEmpty.setVisibility(list.isEmpty() ? View.VISIBLE : View.GONE);
         binding.rvChats.setVisibility(list.isEmpty() ? View.GONE : View.VISIBLE);
+    }
+
+    private void confirmDeleteChat(String peer) {
+        new AlertDialog.Builder(requireContext())
+                .setTitle(getString(R.string.delete_chat_title, peer))
+                .setMessage(R.string.delete_chat_body)
+                .setPositiveButton(R.string.delete, (dialog, which) ->
+                        MessageSink.deleteChat(requireContext(), peer))
+                .setNegativeButton(R.string.cancel, null)
+                .show();
     }
 
     private void openChat(String peer) {

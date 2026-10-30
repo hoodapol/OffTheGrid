@@ -10,6 +10,7 @@ import android.util.Log;
 import android.view.Menu;
 import android.view.MenuItem;
 
+import androidx.appcompat.app.AlertDialog;
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.core.content.ContextCompat;
 import androidx.recyclerview.widget.LinearLayoutManager;
@@ -27,7 +28,6 @@ public class ChatActivity extends AppCompatActivity {
     private ActivityChatBinding binding;
     private MessageAdapter adapter;
     private String peerName;
-    private boolean connected = false;
 
     private final BroadcastReceiver receiver = new BroadcastReceiver() {
         @Override
@@ -39,6 +39,8 @@ public class ChatActivity extends AppCompatActivity {
             }
         }
     };
+
+    private final PeerRegistry.Listener registryListener = () -> runOnUiThread(this::updateStatus);
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -57,13 +59,17 @@ public class ChatActivity extends AppCompatActivity {
             getSupportActionBar().setDisplayHomeAsUpEnabled(true);
         }
 
-        adapter = new MessageAdapter();
+        adapter = new MessageAdapter(this::confirmDeleteMessage);
         LinearLayoutManager layoutManager = new LinearLayoutManager(this);
         layoutManager.setStackFromEnd(true);
         binding.rvMessages.setLayoutManager(layoutManager);
         binding.rvMessages.setAdapter(adapter);
 
         binding.btnSend.setOnClickListener(v -> sendMessage());
+    }
+
+    private void updateStatus() {
+        binding.statusView.setConnected(PeerRegistry.contains(peerName));
     }
 
     private void loadMessages() {
@@ -75,18 +81,19 @@ public class ChatActivity extends AppCompatActivity {
                 new String[]{peerName},
                 MessageStorage.COL_TIMESTAMP + " ASC, " + MessageStorage.COL_ID + " ASC")) {
             if (cursor != null) {
+                int idIndex = cursor.getColumnIndexOrThrow(MessageStorage.COL_ID);
+                int uidIndex = cursor.getColumnIndexOrThrow(MessageStorage.COL_UID);
                 int senderIndex = cursor.getColumnIndexOrThrow(MessageStorage.COL_SENDER);
                 int textIndex = cursor.getColumnIndexOrThrow(MessageStorage.COL_TEXT);
                 while (cursor.moveToNext()) {
                     boolean sent = MessageStorage.ME.equals(cursor.getString(senderIndex));
-                    list.add(new Message(cursor.getString(textIndex), sent));
+                    list.add(new Message(cursor.getLong(idIndex), cursor.getString(uidIndex),
+                            cursor.getString(textIndex), sent));
                 }
             }
         }
         adapter.setMessages(list);
-        if (adapter.getItemCount() > 0) {
-            binding.rvMessages.scrollToPosition(adapter.getItemCount() - 1);
-        }
+        binding.rvMessages.scrollToPosition(adapter.getItemCount() - 1);
     }
 
     private void sendMessage() {
@@ -100,6 +107,59 @@ public class ChatActivity extends AppCompatActivity {
         binding.etMessage.setText("");
     }
 
+    private void confirmDeleteMessage(Message message) {
+        if (message.isSent() && message.getUid() != null) {
+            CharSequence[] choices = {
+                    getString(R.string.delete_for_me),
+                    getString(R.string.delete_for_everyone)
+            };
+            new AlertDialog.Builder(this)
+                    .setTitle(R.string.delete_message_title)
+                    .setItems(choices, (dialog, which) -> {
+                        if (which == 0) {
+                            deleteForMe(message);
+                        } else {
+                            unsend(message);
+                        }
+                    })
+                    .setNegativeButton(R.string.cancel, null)
+                    .show();
+        } else {
+            new AlertDialog.Builder(this)
+                    .setTitle(R.string.delete_message_title)
+                    .setMessage(R.string.delete_message_body)
+                    .setPositiveButton(R.string.delete, (dialog, which) -> deleteForMe(message))
+                    .setNegativeButton(R.string.cancel, null)
+                    .show();
+        }
+    }
+
+    private void deleteForMe(Message message) {
+        MessageSink.deleteMessage(this, message.getId());
+        loadMessages();
+    }
+
+    private void unsend(Message message) {
+        Intent intent = new Intent(this, OffTheGridService.class);
+        intent.setAction(OffTheGridService.ACTION_UNSEND);
+        intent.putExtra(OffTheGridService.EXTRA_PEER, peerName);
+        intent.putExtra(OffTheGridService.EXTRA_UID, message.getUid());
+        intent.putExtra(OffTheGridService.EXTRA_ROW_ID, message.getId());
+        startService(intent);
+    }
+
+    private void confirmDeleteChat() {
+        new AlertDialog.Builder(this)
+                .setTitle(getString(R.string.delete_chat_title, peerName))
+                .setMessage(R.string.delete_chat_body)
+                .setPositiveButton(R.string.delete, (dialog, which) -> {
+                    MessageSink.deleteChat(this, peerName);
+                    finish();
+                })
+                .setNegativeButton(R.string.cancel, null)
+                .show();
+    }
+
     @Override
     public boolean onCreateOptionsMenu(Menu menu) {
         getMenuInflater().inflate(R.menu.menu_chat, menu);
@@ -108,17 +168,8 @@ public class ChatActivity extends AppCompatActivity {
 
     @Override
     public boolean onOptionsItemSelected(MenuItem item) {
-        if (item.getItemId() == R.id.action_incoming) {
-            Intent intent = new Intent(this, OffTheGridService.class);
-            intent.setAction(OffTheGridService.ACTION_SIMULATE_INCOMING);
-            intent.putExtra(OffTheGridService.EXTRA_PEER, peerName);
-            intent.putExtra(OffTheGridService.EXTRA_DELAY_MS, 5000L);
-            startService(intent);
-            return true;
-        }
-        if (item.getItemId() == R.id.action_toggle) {
-            connected = !connected;
-            binding.statusView.setConnected(connected);
+        if (item.getItemId() == R.id.action_delete_chat) {
+            confirmDeleteChat();
             return true;
         }
         return super.onOptionsItemSelected(item);
@@ -136,6 +187,8 @@ public class ChatActivity extends AppCompatActivity {
         Log.d(TAG, "onStart");
         IntentFilter filter = new IntentFilter(OffTheGridService.EVENT_MESSAGE_SAVED);
         ContextCompat.registerReceiver(this, receiver, filter, ContextCompat.RECEIVER_NOT_EXPORTED);
+        PeerRegistry.addListener(registryListener);
+        updateStatus();
         loadMessages();
     }
 
@@ -156,6 +209,7 @@ public class ChatActivity extends AppCompatActivity {
     @Override
     protected void onStop() {
         Log.d(TAG, "onStop");
+        PeerRegistry.removeListener(registryListener);
         unregisterReceiver(receiver);
         super.onStop();
     }

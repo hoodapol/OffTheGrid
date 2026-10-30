@@ -25,13 +25,15 @@ public final class MessageSink {
     private MessageSink() {
     }
 
-    public static Uri save(Context context, String sender, String peer, String text, int status) {
+    public static Uri save(Context context, String sender, String peer, String text, int status,
+                           String uid) {
         ContentValues values = new ContentValues();
         values.put(MessageStorage.COL_SENDER, sender);
         values.put(MessageStorage.COL_TEXT, text);
         values.put(MessageStorage.COL_TIMESTAMP, System.currentTimeMillis());
         values.put(MessageStorage.COL_PEER, peer);
         values.put(MessageStorage.COL_STATUS, status);
+        values.put(MessageStorage.COL_UID, uid);
         return context.getContentResolver().insert(MessageStorage.CONTENT_URI, values);
     }
 
@@ -45,6 +47,31 @@ public final class MessageSink {
                 new String[]{row.getLastPathSegment()});
     }
 
+    public static void deleteMessage(Context context, long id) {
+        context.getContentResolver().delete(
+                MessageStorage.CONTENT_URI,
+                MessageStorage.COL_ID + "=?",
+                new String[]{String.valueOf(id)});
+    }
+
+    public static void deleteChat(Context context, String peer) {
+        context.getContentResolver().delete(
+                MessageStorage.CONTENT_URI,
+                MessageStorage.COL_PEER + "=?",
+                new String[]{peer});
+    }
+
+    public static void deleteRemote(Context context, String peer, String uid) {
+        int count = context.getContentResolver().delete(
+                MessageStorage.CONTENT_URI,
+                MessageStorage.COL_UID + "=? AND " + MessageStorage.COL_PEER + "=? AND "
+                        + MessageStorage.COL_SENDER + "=?",
+                new String[]{uid, peer, peer});
+        if (count > 0) {
+            broadcastSaved(context, peer);
+        }
+    }
+
     public static void broadcastSaved(Context context, String peer) {
         Intent intent = new Intent(OffTheGridService.EVENT_MESSAGE_SAVED);
         intent.setPackage(context.getPackageName());
@@ -52,8 +79,8 @@ public final class MessageSink {
         context.sendBroadcast(intent);
     }
 
-    public static void receive(Context context, String peer, String text) {
-        save(context, peer, peer, text, MessageStorage.STATUS_DONE);
+    public static void receive(Context context, String peer, String text, String uid) {
+        save(context, peer, peer, text, MessageStorage.STATUS_DONE, uid);
         broadcastSaved(context, peer);
         notifyIncoming(context, peer, text);
     }

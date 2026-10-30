@@ -32,13 +32,21 @@ public final class PeerClient {
         return null;
     }
 
-    public static boolean sendMessage(Context context, String peer, String text) {
+    public static boolean sendMessage(Context context, String peer, String uid, String text) {
+        return sendAndAwaitAck(peer, Wire.message(Profile.getName(context), uid, text));
+    }
+
+    public static boolean sendDelete(Context context, String peer, String uid) {
+        return sendAndAwaitAck(peer, Wire.delete(Profile.getName(context), uid));
+    }
+
+    private static boolean sendAndAwaitAck(String peer, String line) {
         PeerRegistry.Address address = PeerRegistry.get(peer);
         if (address == null) return false;
         try (Socket socket = open(address.host, address.port);
              BufferedWriter out = Wire.writer(socket);
              BufferedReader in = Wire.reader(socket)) {
-            Wire.writeLine(out, Wire.message(Profile.getName(context), text));
+            Wire.writeLine(out, line);
             Wire.Packet reply = Wire.parse(in.readLine());
             return reply != null && Wire.ACK.equals(reply.type);
         } catch (IOException e) {

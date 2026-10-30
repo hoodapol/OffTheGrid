@@ -12,6 +12,7 @@ public final class Wire {
 
     public static final String HELLO = "HELLO";
     public static final String MSG = "MSG";
+    public static final String DEL = "DEL";
     public static final String ACK = "ACK";
 
     private static final String SEPARATOR = "\t";
@@ -22,11 +23,13 @@ public final class Wire {
     public static final class Packet {
         public final String type;
         public final String name;
+        public final String id;
         public final String text;
 
-        Packet(String type, String name, String text) {
+        Packet(String type, String name, String id, String text) {
             this.type = type;
             this.name = name;
+            this.id = id;
             this.text = text;
         }
     }
@@ -35,8 +38,12 @@ public final class Wire {
         return HELLO + SEPARATOR + clean(name);
     }
 
-    public static String message(String name, String text) {
-        return MSG + SEPARATOR + clean(name) + SEPARATOR + clean(text);
+    public static String message(String name, String id, String text) {
+        return MSG + SEPARATOR + clean(name) + SEPARATOR + clean(id) + SEPARATOR + clean(text);
+    }
+
+    public static String delete(String name, String id) {
+        return DEL + SEPARATOR + clean(name) + SEPARATOR + clean(id);
     }
 
     public static String ack() {
@@ -45,11 +52,12 @@ public final class Wire {
 
     public static Packet parse(String line) {
         if (line == null) return null;
-        String[] parts = line.split(SEPARATOR, 3);
+        String[] parts = line.split(SEPARATOR, 4);
         String type = parts[0];
-        if (ACK.equals(type)) return new Packet(ACK, "", "");
-        if (HELLO.equals(type) && parts.length >= 2) return new Packet(HELLO, parts[1], "");
-        if (MSG.equals(type) && parts.length == 3) return new Packet(MSG, parts[1], parts[2]);
+        if (ACK.equals(type)) return new Packet(ACK, "", "", "");
+        if (HELLO.equals(type) && parts.length >= 2) return new Packet(HELLO, parts[1], "", "");
+        if (MSG.equals(type) && parts.length == 4) return new Packet(MSG, parts[1], parts[2], parts[3]);
+        if (DEL.equals(type) && parts.length >= 3) return new Packet(DEL, parts[1], parts[2], "");
         return null;
     }
 
