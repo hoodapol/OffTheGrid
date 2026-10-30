@@ -23,15 +23,10 @@ public class PeerAdapter extends RecyclerView.Adapter<PeerAdapter.ViewHolder> {
         this.listener = listener;
     }
 
-    public void add(String peer) {
-        peers.add(peer);
-        notifyItemInserted(peers.size() - 1);
-    }
-
-    public void addIfMissing(String peer) {
-        if (!peers.contains(peer)) {
-            add(peer);
-        }
+    public void setAll(List<String> newPeers) {
+        peers.clear();
+        peers.addAll(newPeers);
+        notifyDataSetChanged();
     }
 
     @NonNull

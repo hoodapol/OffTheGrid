@@ -48,4 +48,15 @@
     <string name="enter_host_and_port">Enter an IP address and a port from 1 to 65535</string>
     <string name="connect_failed">Could not reach that device. Check the address and that the app is open there.</string>
     <string name="connected_to">Connected to %1$s</string>
+    <string name="peers_empty">No one nearby yet. Make sure you are on the same Wi-Fi and the app is open on their phone.</string>
+    <string name="delete">Delete</string>
+    <string name="cancel">Cancel</string>
+    <string name="delete_message_title">Delete message?</string>
+    <string name="delete_message_body">This removes the message from this phone only. The other person keeps their copy.</string>
+    <string name="delete_chat">Delete chat</string>
+    <string name="delete_chat_title">Delete chat with %1$s?</string>
+    <string name="delete_chat_body">This removes the whole conversation from this phone only. The other person keeps their copy.</string>
+    <string name="delete_for_me">Delete for me</string>
+    <string name="delete_for_everyone">Delete for everyone</string>
+    <string name="unsend_failed">Could not reach %1$s, so the message was not deleted for them. Try again when they are nearby.</string>
 </resources>
