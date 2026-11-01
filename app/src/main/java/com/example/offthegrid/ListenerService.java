@@ -77,16 +77,17 @@ public class ListenerService extends Service {
             Wire.Packet packet = Wire.parse(in.readLine());
             if (packet == null) return;
             if (Wire.HELLO.equals(packet.type)) {
-                rememberSender(connection, packet.name);
-                Wire.writeLine(out, Wire.hello(Profile.getName(this)));
+                rememberSender(connection, packet);
+                Wire.writeLine(out, Wire.hello(Profile.getName(this), Profile.getId(this)));
             } else if (Wire.MSG.equals(packet.type)) {
-                if (isSelf(packet.name)) return;
-                rememberSender(connection, packet.name);
-                MessageSink.receive(getApplicationContext(), packet.name, packet.text, packet.id);
+                if (isSelf(packet)) return;
+                String key = rememberSender(connection, packet);
+                MessageSink.receive(getApplicationContext(), key, packet.text, packet.id);
                 Wire.writeLine(out, Wire.ack());
             } else if (Wire.DEL.equals(packet.type)) {
-                if (isSelf(packet.name)) return;
-                MessageSink.deleteRemote(getApplicationContext(), packet.name, packet.id);
+                if (isSelf(packet)) return;
+                String key = rememberSender(connection, packet);
+                MessageSink.deleteRemote(getApplicationContext(), key, packet.id);
                 Wire.writeLine(out, Wire.ack());
             }
         } catch (IOException e) {
@@ -94,14 +95,14 @@ public class ListenerService extends Service {
         }
     }
 
-    private boolean isSelf(String name) {
-        return name != null && name.equals(Profile.getName(this));
+    private boolean isSelf(Wire.Packet packet) {
+        return packet.device.equals(Profile.getId(this));
     }
 
-    private void rememberSender(Socket connection, String name) {
-        if (name == null || name.isEmpty() || isSelf(name)) return;
+    private String rememberSender(Socket connection, Wire.Packet packet) {
+        if (isSelf(packet)) return null;
         String host = connection.getInetAddress().getHostAddress();
-        PeerRegistry.putIfAbsent(name, host, PORT);
+        return PeerRegistry.registerIfAbsent(packet.name, packet.device, host, PORT);
     }
 
     private void closeQuietly(Closeable closeable) {

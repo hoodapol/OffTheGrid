@@ -166,11 +166,10 @@ public final class NsdHelper {
         String serviceName = info.getServiceName();
         try {
             worker.execute(() -> {
-                String name = PeerClient.hello(context, host, port);
-                if (name != null && !name.equals(Profile.getName(context))) {
-                    peerByService.put(serviceName, name);
-                    PeerRegistry.put(name, host, port);
-                }
+                Wire.Packet identity = PeerClient.hello(context, host, port);
+                if (identity == null || identity.device.equals(Profile.getId(context))) return;
+                String key = PeerRegistry.register(identity.name, identity.device, host, port);
+                peerByService.put(serviceName, key);
             });
         } catch (RejectedExecutionException e) {
             Log.w(TAG, "Worker stopped", e);

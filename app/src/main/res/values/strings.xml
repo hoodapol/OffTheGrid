@@ -61,4 +61,23 @@
     <string name="unsend_failed">Could not reach %1$s, so the message was not deleted for them. Try again when they are nearby.</string>
     <string name="status_pending">Waiting to send…</string>
     <string name="status_delivered">Delivered</string>
+    <string name="backup_button">Back up messages</string>
+    <string name="restore_button">Restore messages</string>
+    <string name="backup_confirm_title">Back up messages?</string>
+    <string name="backup_confirm_body">This uploads all your messages to Firebase, so they will no longer be only on your phone. Continue?</string>
+    <string name="backup_action">Back up</string>
+    <string name="backup_working">Backing up…</string>
+    <string name="backup_done_title">Backup complete</string>
+    <string name="backup_done_body">%1$d messages backed up.\n\nYour backup code:\n%2$s\n\nKeep this code. You need it to restore after reinstalling the app.</string>
+    <string name="backup_nothing">There are no messages to back up yet.</string>
+    <string name="backup_copy">Copy code</string>
+    <string name="backup_code_copied">Code copied</string>
+    <string name="restore_title">Restore messages</string>
+    <string name="restore_hint">Backup code</string>
+    <string name="restore_action">Restore</string>
+    <string name="restore_working">Restoring…</string>
+    <string name="restore_done">Restored %1$d messages.</string>
+    <string name="restore_nothing">No new messages to restore.</string>
+    <string name="restore_code_needed">Enter a backup code.</string>
+    <string name="firebase_failed">Couldn\'t reach Firebase. Check your internet connection and try again.</string>
 </resources>

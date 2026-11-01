@@ -28,31 +28,33 @@ public final class Wire {
     public static final class Packet {
         public final String type;
         public final String name;
+        public final String device;
         public final String id;
         public final String text;
 
-        Packet(String type, String name, String id, String text) {
+        Packet(String type, String name, String device, String id, String text) {
             this.type = type;
             this.name = name;
+            this.device = device;
             this.id = id;
             this.text = text;
         }
     }
 
-    public static String hello(String name) {
-        return build(HELLO, name, "", "");
+    public static String hello(String name, String device) {
+        return build(HELLO, name, device, "", "");
     }
 
-    public static String message(String name, String id, String text) {
-        return build(MSG, name, id, text);
+    public static String message(String name, String device, String id, String text) {
+        return build(MSG, name, device, id, text);
     }
 
-    public static String delete(String name, String id) {
-        return build(DEL, name, id, "");
+    public static String delete(String name, String device, String id) {
+        return build(DEL, name, device, id, "");
     }
 
     public static String ack() {
-        return build(ACK, "", "", "");
+        return build(ACK, "", "", "", "");
     }
 
     public static Packet parse(String line) {
@@ -61,19 +63,18 @@ public final class Wire {
             JSONObject json = new JSONObject(line);
             String type = json.optString("type");
             String name = json.optString("name");
+            String device = json.optString("device");
             String id = json.optString("id");
             String text = json.optString("text");
             if (MSG.equals(type) || DEL.equals(type)) {
                 Log.d(TAG, "In: " + line);
             }
-            if (ACK.equals(type)) return new Packet(ACK, "", "", "");
-            if (HELLO.equals(type) && !name.isEmpty()) return new Packet(HELLO, name, "", "");
-            if (MSG.equals(type) && !name.isEmpty() && !id.isEmpty()) {
-                return new Packet(MSG, name, id, text);
-            }
-            if (DEL.equals(type) && !name.isEmpty() && !id.isEmpty()) {
-                return new Packet(DEL, name, id, "");
-            }
+            if (ACK.equals(type)) return new Packet(ACK, "", "", "", "");
+            if (name.isEmpty() || device.isEmpty()) return null;
+            if (HELLO.equals(type)) return new Packet(HELLO, name, device, "", "");
+            if (id.isEmpty()) return null;
+            if (MSG.equals(type)) return new Packet(MSG, name, device, id, text);
+            if (DEL.equals(type)) return new Packet(DEL, name, device, id, "");
             return null;
         } catch (JSONException e) {
             return null;
@@ -94,11 +95,12 @@ public final class Wire {
         out.flush();
     }
 
-    private static String build(String type, String name, String id, String text) {
+    private static String build(String type, String name, String device, String id, String text) {
         try {
             JSONObject json = new JSONObject();
             json.put("type", type);
             json.put("name", name);
+            json.put("device", device);
             json.put("id", id);
             json.put("text", text);
             String line = json.toString();

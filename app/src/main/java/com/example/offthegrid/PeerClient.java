@@ -17,9 +17,9 @@ public final class PeerClient {
     private PeerClient() {
     }
 
-    public static String hello(Context context, String host, int port) {
+    public static Wire.Packet hello(Context context, String host, int port) {
         try {
-            return requestName(context, host, port);
+            return requestIdentity(context, host, port);
         } catch (IOException e) {
             Log.w(TAG, "Hello to " + host + ":" + port + " failed", e);
             return null;
@@ -30,31 +30,35 @@ public final class PeerClient {
         PeerRegistry.Address address = PeerRegistry.get(peer);
         if (address == null) return false;
         try {
-            return peer.equals(requestName(context, address.host, address.port));
+            Wire.Packet reply = requestIdentity(context, address.host, address.port);
+            return reply != null && address.deviceId.equals(reply.device);
         } catch (IOException e) {
             return false;
         }
     }
 
-    private static String requestName(Context context, String host, int port) throws IOException {
+    private static Wire.Packet requestIdentity(Context context, String host, int port)
+            throws IOException {
         try (Socket socket = open(host, port);
              BufferedWriter out = Wire.writer(socket);
              BufferedReader in = Wire.reader(socket)) {
-            Wire.writeLine(out, Wire.hello(Profile.getName(context)));
+            Wire.writeLine(out, Wire.hello(Profile.getName(context), Profile.getId(context)));
             Wire.Packet reply = Wire.parse(in.readLine());
             if (reply != null && Wire.HELLO.equals(reply.type)) {
-                return reply.name;
+                return reply;
             }
             return null;
         }
     }
 
     public static boolean sendMessage(Context context, String peer, String uid, String text) {
-        return sendAndAwaitAck(peer, Wire.message(Profile.getName(context), uid, text));
+        return sendAndAwaitAck(peer, Wire.message(
+                Profile.getName(context), Profile.getId(context), uid, text));
     }
 
     public static boolean sendDelete(Context context, String peer, String uid) {
-        return sendAndAwaitAck(peer, Wire.delete(Profile.getName(context), uid));
+        return sendAndAwaitAck(peer, Wire.delete(
+                Profile.getName(context), Profile.getId(context), uid));
     }
 
     private static boolean sendAndAwaitAck(String peer, String line) {
