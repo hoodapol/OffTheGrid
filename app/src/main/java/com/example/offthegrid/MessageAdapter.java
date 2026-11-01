@@ -44,13 +44,24 @@ public class MessageAdapter extends RecyclerView.Adapter<MessageAdapter.ViewHold
 
     @Override
     public void onBindViewHolder(@NonNull ViewHolder holder, int position) {
-        if (holder.text != null) {
-            Message message = messages.get(position - 1);
-            holder.text.setText(message.getText());
-            holder.text.setOnLongClickListener(v -> {
-                listener.onMessageLongClick(message);
-                return true;
-            });
+        if (holder.text == null) return;
+        Message message = messages.get(position - 1);
+        holder.text.setText(message.getText());
+        holder.text.setOnLongClickListener(v -> {
+            listener.onMessageLongClick(message);
+            return true;
+        });
+        if (holder.status != null) {
+            boolean last = position == messages.size();
+            if (message.isPending()) {
+                holder.status.setText(R.string.status_pending);
+                holder.status.setVisibility(View.VISIBLE);
+            } else if (last) {
+                holder.status.setText(R.string.status_delivered);
+                holder.status.setVisibility(View.VISIBLE);
+            } else {
+                holder.status.setVisibility(View.GONE);
+            }
         }
     }
 
@@ -71,12 +82,21 @@ public class MessageAdapter extends RecyclerView.Adapter<MessageAdapter.ViewHold
         notifyDataSetChanged();
     }
 
+    public boolean hasPending() {
+        for (Message message : messages) {
+            if (message.isPending()) return true;
+        }
+        return false;
+    }
+
     static class ViewHolder extends RecyclerView.ViewHolder {
         final TextView text;
+        final TextView status;
 
         ViewHolder(View itemView) {
             super(itemView);
             text = itemView.findViewById(R.id.tvText);
+            status = itemView.findViewById(R.id.tvStatus);
         }
     }
 }

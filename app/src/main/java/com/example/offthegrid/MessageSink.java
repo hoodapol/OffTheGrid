@@ -10,6 +10,7 @@ import android.content.ContentValues;
 import android.content.Context;
 import android.content.Intent;
 import android.content.pm.PackageManager;
+import android.database.Cursor;
 import android.net.Uri;
 import android.os.Build;
 
@@ -37,14 +38,14 @@ public final class MessageSink {
         return context.getContentResolver().insert(MessageStorage.CONTENT_URI, values);
     }
 
-    public static void setStatus(Context context, Uri row, int status) {
+    public static void setStatus(Context context, long id, int status) {
         ContentValues values = new ContentValues();
         values.put(MessageStorage.COL_STATUS, status);
         context.getContentResolver().update(
                 MessageStorage.CONTENT_URI,
                 values,
                 MessageStorage.COL_ID + "=?",
-                new String[]{row.getLastPathSegment()});
+                new String[]{String.valueOf(id)});
     }
 
     public static void deleteMessage(Context context, long id) {
@@ -80,9 +81,22 @@ public final class MessageSink {
     }
 
     public static void receive(Context context, String peer, String text, String uid) {
+        if (uid != null && alreadyReceived(context, peer, uid)) return;
         save(context, peer, peer, text, MessageStorage.STATUS_DONE, uid);
         broadcastSaved(context, peer);
         notifyIncoming(context, peer, text);
+    }
+
+    private static boolean alreadyReceived(Context context, String peer, String uid) {
+        try (Cursor cursor = context.getContentResolver().query(
+                MessageStorage.CONTENT_URI,
+                new String[]{MessageStorage.COL_ID},
+                MessageStorage.COL_UID + "=? AND " + MessageStorage.COL_PEER + "=? AND "
+                        + MessageStorage.COL_SENDER + "=?",
+                new String[]{uid, peer, peer},
+                null)) {
+            return cursor != null && cursor.moveToFirst();
+        }
     }
 
     public static void createChannel(Context context) {

@@ -1,7 +1,9 @@
 package com.example.offthegrid;
 
 import android.app.Service;
+import android.content.ContentUris;
 import android.content.Intent;
+import android.database.Cursor;
 import android.net.Uri;
 import android.os.Handler;
 import android.os.IBinder;
@@ -11,6 +13,8 @@ import android.widget.Toast;
 
 import androidx.annotation.Nullable;
 
+import java.util.ArrayList;
+import java.util.List;
 import java.util.UUID;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
@@ -20,6 +24,7 @@ public class OffTheGridService extends Service {
 
     public static final String ACTION_SEND = "com.example.offthegrid.action.SEND";
     public static final String ACTION_UNSEND = "com.example.offthegrid.action.UNSEND";
+    public static final String ACTION_RETRY = "com.example.offthegrid.action.RETRY";
     public static final String EVENT_MESSAGE_SAVED = "com.example.offthegrid.event.MESSAGE_SAVED";
     public static final String EXTRA_PEER = "peer";
     public static final String EXTRA_TEXT = "text";
@@ -27,6 +32,18 @@ public class OffTheGridService extends Service {
     public static final String EXTRA_ROW_ID = "row_id";
 
     private ExecutorService io;
+
+    private static final class PendingMessage {
+        final long id;
+        final String uid;
+        final String text;
+
+        PendingMessage(long id, String uid, String text) {
+            this.id = id;
+            this.uid = uid;
+            this.text = text;
+        }
+    }
 
     @Override
     public void onCreate() {
@@ -59,6 +76,8 @@ public class OffTheGridService extends Service {
         if (peer == null) return;
         if (ACTION_SEND.equals(action) && text != null) {
             send(peer, text);
+        } else if (ACTION_RETRY.equals(action)) {
+            retry(peer);
         } else if (ACTION_UNSEND.equals(action) && uid != null && rowId >= 0) {
             unsend(peer, uid, rowId);
         }
@@ -66,13 +85,50 @@ public class OffTheGridService extends Service {
 
     private void send(String peer, String text) {
         String uid = UUID.randomUUID().toString();
-        boolean networked = PeerRegistry.contains(peer);
-        int firstStatus = networked ? MessageStorage.STATUS_PENDING : MessageStorage.STATUS_DONE;
-        Uri row = MessageSink.save(this, MessageStorage.ME, peer, text, firstStatus, uid);
+        Uri row = MessageSink.save(this, MessageStorage.ME, peer, text,
+                MessageStorage.STATUS_PENDING, uid);
         MessageSink.broadcastSaved(this, peer);
-        if (networked && row != null && PeerClient.sendMessage(this, peer, uid, text)) {
-            MessageSink.setStatus(this, row, MessageStorage.STATUS_DONE);
+        if (row != null && PeerClient.sendMessage(this, peer, uid, text)) {
+            MessageSink.setStatus(this, ContentUris.parseId(row), MessageStorage.STATUS_DONE);
+            MessageSink.broadcastSaved(this, peer);
         }
+    }
+
+    private void retry(String peer) {
+        boolean changed = false;
+        for (PendingMessage item : loadPending(peer)) {
+            if (!PeerClient.sendMessage(this, peer, item.uid, item.text)) break;
+            MessageSink.setStatus(this, item.id, MessageStorage.STATUS_DONE);
+            changed = true;
+        }
+        if (changed) {
+            MessageSink.broadcastSaved(this, peer);
+        }
+    }
+
+    private List<PendingMessage> loadPending(String peer) {
+        List<PendingMessage> list = new ArrayList<>();
+        try (Cursor cursor = getContentResolver().query(
+                MessageStorage.CONTENT_URI,
+                null,
+                MessageStorage.COL_PEER + "=? AND "
+                        + MessageStorage.COL_SENDER + "=? AND "
+                        + MessageStorage.COL_STATUS + "=? AND "
+                        + MessageStorage.COL_UID + " IS NOT NULL",
+                new String[]{peer, MessageStorage.ME,
+                        String.valueOf(MessageStorage.STATUS_PENDING)},
+                MessageStorage.COL_TIMESTAMP + " ASC, " + MessageStorage.COL_ID + " ASC")) {
+            if (cursor != null) {
+                int idIndex = cursor.getColumnIndexOrThrow(MessageStorage.COL_ID);
+                int uidIndex = cursor.getColumnIndexOrThrow(MessageStorage.COL_UID);
+                int textIndex = cursor.getColumnIndexOrThrow(MessageStorage.COL_TEXT);
+                while (cursor.moveToNext()) {
+                    list.add(new PendingMessage(cursor.getLong(idIndex),
+                            cursor.getString(uidIndex), cursor.getString(textIndex)));
+                }
+            }
+        }
+        return list;
     }
 
     private void unsend(String peer, String uid, long rowId) {

@@ -80,6 +80,9 @@ public class ChatActivity extends AppCompatActivity {
             main.post(() -> {
                 if (generation != pingGeneration) return;
                 binding.statusView.setConnected(online);
+                if (online && adapter.hasPending()) {
+                    retryPending();
+                }
                 main.postDelayed(() -> {
                     if (generation == pingGeneration) {
                         pingLoop(generation);
@@ -87,6 +90,13 @@ public class ChatActivity extends AppCompatActivity {
                 }, PING_INTERVAL_MS);
             });
         });
+    }
+
+    private void retryPending() {
+        Intent intent = new Intent(this, OffTheGridService.class);
+        intent.setAction(OffTheGridService.ACTION_RETRY);
+        intent.putExtra(OffTheGridService.EXTRA_PEER, peerName);
+        startService(intent);
     }
 
     private void loadMessages() {
@@ -102,10 +112,11 @@ public class ChatActivity extends AppCompatActivity {
                 int uidIndex = cursor.getColumnIndexOrThrow(MessageStorage.COL_UID);
                 int senderIndex = cursor.getColumnIndexOrThrow(MessageStorage.COL_SENDER);
                 int textIndex = cursor.getColumnIndexOrThrow(MessageStorage.COL_TEXT);
+                int statusIndex = cursor.getColumnIndexOrThrow(MessageStorage.COL_STATUS);
                 while (cursor.moveToNext()) {
                     boolean sent = MessageStorage.ME.equals(cursor.getString(senderIndex));
                     list.add(new Message(cursor.getLong(idIndex), cursor.getString(uidIndex),
-                            cursor.getString(textIndex), sent));
+                            cursor.getString(textIndex), sent, cursor.getInt(statusIndex)));
                 }
             }
         }

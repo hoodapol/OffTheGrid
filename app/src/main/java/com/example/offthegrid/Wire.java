@@ -1,5 +1,10 @@
 package com.example.offthegrid;
 
+import android.util.Log;
+
+import org.json.JSONException;
+import org.json.JSONObject;
+
 import java.io.BufferedReader;
 import java.io.BufferedWriter;
 import java.io.IOException;
@@ -15,7 +20,7 @@ public final class Wire {
     public static final String DEL = "DEL";
     public static final String ACK = "ACK";
 
-    private static final String SEPARATOR = "\t";
+    private static final String TAG = "Wire";
 
     private Wire() {
     }
@@ -35,30 +40,44 @@ public final class Wire {
     }
 
     public static String hello(String name) {
-        return HELLO + SEPARATOR + clean(name);
+        return build(HELLO, name, "", "");
     }
 
     public static String message(String name, String id, String text) {
-        return MSG + SEPARATOR + clean(name) + SEPARATOR + clean(id) + SEPARATOR + clean(text);
+        return build(MSG, name, id, text);
     }
 
     public static String delete(String name, String id) {
-        return DEL + SEPARATOR + clean(name) + SEPARATOR + clean(id);
+        return build(DEL, name, id, "");
     }
 
     public static String ack() {
-        return ACK;
+        return build(ACK, "", "", "");
     }
 
     public static Packet parse(String line) {
         if (line == null) return null;
-        String[] parts = line.split(SEPARATOR, 4);
-        String type = parts[0];
-        if (ACK.equals(type)) return new Packet(ACK, "", "", "");
-        if (HELLO.equals(type) && parts.length >= 2) return new Packet(HELLO, parts[1], "", "");
-        if (MSG.equals(type) && parts.length == 4) return new Packet(MSG, parts[1], parts[2], parts[3]);
-        if (DEL.equals(type) && parts.length >= 3) return new Packet(DEL, parts[1], parts[2], "");
-        return null;
+        try {
+            JSONObject json = new JSONObject(line);
+            String type = json.optString("type");
+            String name = json.optString("name");
+            String id = json.optString("id");
+            String text = json.optString("text");
+            if (MSG.equals(type) || DEL.equals(type)) {
+                Log.d(TAG, "In: " + line);
+            }
+            if (ACK.equals(type)) return new Packet(ACK, "", "", "");
+            if (HELLO.equals(type) && !name.isEmpty()) return new Packet(HELLO, name, "", "");
+            if (MSG.equals(type) && !name.isEmpty() && !id.isEmpty()) {
+                return new Packet(MSG, name, id, text);
+            }
+            if (DEL.equals(type) && !name.isEmpty() && !id.isEmpty()) {
+                return new Packet(DEL, name, id, "");
+            }
+            return null;
+        } catch (JSONException e) {
+            return null;
+        }
     }
 
     public static BufferedReader reader(Socket socket) throws IOException {
@@ -75,7 +94,20 @@ public final class Wire {
         out.flush();
     }
 
-    private static String clean(String value) {
-        return value.replace('\t', ' ').replace('\n', ' ').replace('\r', ' ');
+    private static String build(String type, String name, String id, String text) {
+        try {
+            JSONObject json = new JSONObject();
+            json.put("type", type);
+            json.put("name", name);
+            json.put("id", id);
+            json.put("text", text);
+            String line = json.toString();
+            if (MSG.equals(type) || DEL.equals(type)) {
+                Log.d(TAG, "Out: " + line);
+            }
+            return line;
+        } catch (JSONException e) {
+            throw new IllegalStateException(e);
+        }
     }
 }
