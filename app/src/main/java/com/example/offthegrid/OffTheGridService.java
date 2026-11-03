@@ -23,6 +23,7 @@ public class OffTheGridService extends Service {
     private static final String TAG = "OffTheGridService";
 
     public static final String ACTION_SEND = "com.example.offthegrid.action.SEND";
+    public static final String ACTION_SEND_IMAGE = "com.example.offthegrid.action.SEND_IMAGE";
     public static final String ACTION_UNSEND = "com.example.offthegrid.action.UNSEND";
     public static final String ACTION_RETRY = "com.example.offthegrid.action.RETRY";
     public static final String EVENT_MESSAGE_SAVED = "com.example.offthegrid.event.MESSAGE_SAVED";
@@ -30,6 +31,7 @@ public class OffTheGridService extends Service {
     public static final String EXTRA_TEXT = "text";
     public static final String EXTRA_UID = "uid";
     public static final String EXTRA_ROW_ID = "row_id";
+    public static final String EXTRA_IMAGE = "image";
 
     private ExecutorService io;
 
@@ -64,18 +66,22 @@ public class OffTheGridService extends Service {
         final String peer = intent.getStringExtra(EXTRA_PEER);
         final String text = intent.getStringExtra(EXTRA_TEXT);
         final String uid = intent.getStringExtra(EXTRA_UID);
+        final String image = intent.getStringExtra(EXTRA_IMAGE);
         final long rowId = intent.getLongExtra(EXTRA_ROW_ID, -1);
         io.execute(() -> {
-            handle(action, peer, text, uid, rowId);
+            handle(action, peer, text, uid, rowId, image);
             stopSelf(startId);
         });
         return START_NOT_STICKY;
     }
 
-    private void handle(String action, String peer, String text, String uid, long rowId) {
+    private void handle(String action, String peer, String text, String uid, long rowId,
+                        String image) {
         if (peer == null) return;
         if (ACTION_SEND.equals(action) && text != null) {
             send(peer, text);
+        } else if (ACTION_SEND_IMAGE.equals(action) && image != null) {
+            sendImage(peer, image);
         } else if (ACTION_RETRY.equals(action)) {
             retry(peer);
         } else if (ACTION_UNSEND.equals(action) && uid != null && rowId >= 0) {
@@ -92,6 +98,13 @@ public class OffTheGridService extends Service {
             MessageSink.setStatus(this, ContentUris.parseId(row), MessageStorage.STATUS_DONE);
             MessageSink.broadcastSaved(this, peer);
         }
+    }
+
+    private void sendImage(String peer, String image) {
+        String uid = UUID.randomUUID().toString();
+        MessageSink.save(this, MessageStorage.ME, peer, "", MessageStorage.STATUS_PENDING, uid,
+                image);
+        MessageSink.broadcastSaved(this, peer);
     }
 
     private void retry(String peer) {
@@ -114,7 +127,8 @@ public class OffTheGridService extends Service {
                 MessageStorage.COL_PEER + "=? AND "
                         + MessageStorage.COL_SENDER + "=? AND "
                         + MessageStorage.COL_STATUS + "=? AND "
-                        + MessageStorage.COL_UID + " IS NOT NULL",
+                        + MessageStorage.COL_UID + " IS NOT NULL AND "
+                        + MessageStorage.COL_IMAGE + " IS NULL",
                 new String[]{peer, MessageStorage.ME,
                         String.valueOf(MessageStorage.STATUS_PENDING)},
                 MessageStorage.COL_TIMESTAMP + " ASC, " + MessageStorage.COL_ID + " ASC")) {

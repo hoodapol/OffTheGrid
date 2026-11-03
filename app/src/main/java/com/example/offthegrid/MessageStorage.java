@@ -14,6 +14,7 @@ public final class MessageStorage {
     public static final String COL_PEER = "peer";
     public static final String COL_STATUS = "status";
     public static final String COL_UID = "uid";
+    public static final String COL_IMAGE = "image";
 
     public static final int STATUS_DONE = 0;
     public static final int STATUS_PENDING = 1;

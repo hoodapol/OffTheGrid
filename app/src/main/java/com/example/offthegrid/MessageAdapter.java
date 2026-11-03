@@ -1,8 +1,11 @@
 package com.example.offthegrid;
 
+import android.content.Context;
+import android.graphics.Bitmap;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
+import android.widget.ImageView;
 import android.widget.TextView;
 
 import androidx.annotation.NonNull;
@@ -46,11 +49,29 @@ public class MessageAdapter extends RecyclerView.Adapter<MessageAdapter.ViewHold
     public void onBindViewHolder(@NonNull ViewHolder holder, int position) {
         if (holder.text == null) return;
         Message message = messages.get(position - 1);
-        holder.text.setText(message.getText());
-        holder.text.setOnLongClickListener(v -> {
+        Context context = holder.itemView.getContext();
+        View.OnLongClickListener longClick = v -> {
             listener.onMessageLongClick(message);
             return true;
-        });
+        };
+        Bitmap bitmap = message.hasImage()
+                ? ImageStore.thumbnail(context, message.getImage())
+                : null;
+        if (bitmap != null) {
+            holder.text.setVisibility(View.GONE);
+            holder.text.setOnLongClickListener(null);
+            holder.image.setVisibility(View.VISIBLE);
+            holder.image.setImageBitmap(bitmap);
+            holder.image.setOnLongClickListener(longClick);
+        } else {
+            holder.image.setVisibility(View.GONE);
+            holder.image.setOnLongClickListener(null);
+            holder.text.setVisibility(View.VISIBLE);
+            holder.text.setText(message.hasImage()
+                    ? context.getString(R.string.photo_missing)
+                    : message.getText());
+            holder.text.setOnLongClickListener(longClick);
+        }
         if (holder.status != null) {
             boolean last = position == messages.size();
             if (message.isPending()) {
@@ -91,11 +112,13 @@ public class MessageAdapter extends RecyclerView.Adapter<MessageAdapter.ViewHold
 
     static class ViewHolder extends RecyclerView.ViewHolder {
         final TextView text;
+        final ImageView image;
         final TextView status;
 
         ViewHolder(View itemView) {
             super(itemView);
             text = itemView.findViewById(R.id.tvText);
+            image = itemView.findViewById(R.id.ivImage);
             status = itemView.findViewById(R.id.tvStatus);
         }
     }

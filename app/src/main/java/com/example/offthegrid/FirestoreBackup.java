@@ -136,7 +136,7 @@ public final class FirestoreBackup {
         try (Cursor cursor = context.getContentResolver().query(
                 MessageStorage.CONTENT_URI,
                 null,
-                MessageStorage.COL_UID + " IS NOT NULL",
+                MessageStorage.COL_UID + " IS NOT NULL AND " + MessageStorage.COL_IMAGE + " IS NULL",
                 null,
                 MessageStorage.COL_ID + " ASC")) {
             if (cursor == null) return rows;

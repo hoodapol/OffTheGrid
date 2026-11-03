@@ -23,6 +23,16 @@
         android:textColor="@color/otg_on_primary"
         android:textSize="15sp" />
 
+    <ImageView
+        android:id="@+id/ivImage"
+        android:layout_width="240dp"
+        android:layout_height="wrap_content"
+        android:adjustViewBounds="true"
+        android:contentDescription="@string/photo_description"
+        android:maxHeight="320dp"
+        android:scaleType="fitCenter"
+        android:visibility="gone" />
+
     <TextView
         android:id="@+id/tvStatus"
         android:layout_width="wrap_content"

@@ -19,6 +19,9 @@ import androidx.core.app.NotificationManagerCompat;
 import androidx.core.app.TaskStackBuilder;
 import androidx.core.content.ContextCompat;
 
+import java.util.ArrayList;
+import java.util.List;
+
 public final class MessageSink {
 
     private static final String CHANNEL_ID = "incoming_messages";
@@ -28,6 +31,11 @@ public final class MessageSink {
 
     public static Uri save(Context context, String sender, String peer, String text, int status,
                            String uid) {
+        return save(context, sender, peer, text, status, uid, null);
+    }
+
+    public static Uri save(Context context, String sender, String peer, String text, int status,
+                           String uid, String image) {
         ContentValues values = new ContentValues();
         values.put(MessageStorage.COL_SENDER, sender);
         values.put(MessageStorage.COL_TEXT, text);
@@ -35,6 +43,7 @@ public final class MessageSink {
         values.put(MessageStorage.COL_PEER, peer);
         values.put(MessageStorage.COL_STATUS, status);
         values.put(MessageStorage.COL_UID, uid);
+        values.put(MessageStorage.COL_IMAGE, image);
         return context.getContentResolver().insert(MessageStorage.CONTENT_URI, values);
     }
 
@@ -49,27 +58,53 @@ public final class MessageSink {
     }
 
     public static void deleteMessage(Context context, long id) {
-        context.getContentResolver().delete(
-                MessageStorage.CONTENT_URI,
-                MessageStorage.COL_ID + "=?",
-                new String[]{String.valueOf(id)});
+        String selection = MessageStorage.COL_ID + "=?";
+        String[] args = new String[]{String.valueOf(id)};
+        List<String> images = imageNames(context, selection, args);
+        context.getContentResolver().delete(MessageStorage.CONTENT_URI, selection, args);
+        deleteImages(context, images);
     }
 
     public static void deleteChat(Context context, String peer) {
-        context.getContentResolver().delete(
-                MessageStorage.CONTENT_URI,
-                MessageStorage.COL_PEER + "=?",
-                new String[]{peer});
+        String selection = MessageStorage.COL_PEER + "=?";
+        String[] args = new String[]{peer};
+        List<String> images = imageNames(context, selection, args);
+        context.getContentResolver().delete(MessageStorage.CONTENT_URI, selection, args);
+        deleteImages(context, images);
     }
 
     public static void deleteRemote(Context context, String peer, String uid) {
-        int count = context.getContentResolver().delete(
-                MessageStorage.CONTENT_URI,
-                MessageStorage.COL_UID + "=? AND " + MessageStorage.COL_PEER + "=? AND "
-                        + MessageStorage.COL_SENDER + "=?",
-                new String[]{uid, peer, peer});
+        String selection = MessageStorage.COL_UID + "=? AND " + MessageStorage.COL_PEER + "=? AND "
+                + MessageStorage.COL_SENDER + "=?";
+        String[] args = new String[]{uid, peer, peer};
+        List<String> images = imageNames(context, selection, args);
+        int count = context.getContentResolver().delete(MessageStorage.CONTENT_URI, selection, args);
         if (count > 0) {
+            deleteImages(context, images);
             broadcastSaved(context, peer);
+        }
+    }
+
+    private static List<String> imageNames(Context context, String selection, String[] args) {
+        List<String> names = new ArrayList<>();
+        try (Cursor cursor = context.getContentResolver().query(
+                MessageStorage.CONTENT_URI,
+                new String[]{MessageStorage.COL_IMAGE},
+                selection + " AND " + MessageStorage.COL_IMAGE + " IS NOT NULL",
+                args,
+                null)) {
+            if (cursor != null) {
+                while (cursor.moveToNext()) {
+                    names.add(cursor.getString(0));
+                }
+            }
+        }
+        return names;
+    }
+
+    private static void deleteImages(Context context, List<String> names) {
+        for (String name : names) {
+            ImageStore.delete(context, name);
         }
     }
 

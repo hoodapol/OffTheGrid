@@ -74,10 +74,14 @@ public class ChatsFragment extends Fragment {
                 int textIndex = cursor.getColumnIndexOrThrow(MessageStorage.COL_TEXT);
                 int timeIndex = cursor.getColumnIndexOrThrow(MessageStorage.COL_TIMESTAMP);
                 int senderIndex = cursor.getColumnIndexOrThrow(MessageStorage.COL_SENDER);
+                int imageIndex = cursor.getColumnIndexOrThrow(MessageStorage.COL_IMAGE);
                 while (cursor.moveToNext()) {
+                    String preview = cursor.isNull(imageIndex)
+                            ? cursor.getString(textIndex)
+                            : getString(R.string.photo_preview);
                     list.add(new Conversation(
                             cursor.getString(peerIndex),
-                            cursor.getString(textIndex),
+                            preview,
                             cursor.getLong(timeIndex),
                             MessageStorage.ME.equals(cursor.getString(senderIndex))));
                 }

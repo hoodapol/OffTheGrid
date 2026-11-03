@@ -5,13 +5,17 @@ import android.content.Context;
 import android.content.Intent;
 import android.content.IntentFilter;
 import android.database.Cursor;
+import android.net.Uri;
 import android.os.Bundle;
 import android.os.Handler;
 import android.os.Looper;
 import android.util.Log;
 import android.view.Menu;
 import android.view.MenuItem;
+import android.widget.Toast;
 
+import androidx.activity.result.ActivityResultLauncher;
+import androidx.activity.result.contract.ActivityResultContracts;
 import androidx.appcompat.app.AlertDialog;
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.core.content.ContextCompat;
@@ -35,7 +39,17 @@ public class ChatActivity extends AppCompatActivity {
     private String peerName;
     private int pingGeneration;
     private final ExecutorService pinger = Executors.newSingleThreadExecutor();
+    private final ExecutorService imageWorker = Executors.newSingleThreadExecutor();
     private final Handler main = new Handler(Looper.getMainLooper());
+
+    private final ActivityResultLauncher<Intent> picker = registerForActivityResult(
+            new ActivityResultContracts.StartActivityForResult(),
+            result -> {
+                Intent data = result.getData();
+                if (result.getResultCode() == RESULT_OK && data != null) {
+                    onPhotoPicked(data.getData());
+                }
+            });
 
     private final BroadcastReceiver receiver = new BroadcastReceiver() {
         @Override
@@ -72,6 +86,38 @@ public class ChatActivity extends AppCompatActivity {
         binding.rvMessages.setAdapter(adapter);
 
         binding.btnSend.setOnClickListener(v -> sendMessage());
+        binding.btnAttach.setOnClickListener(v -> pickPhoto());
+    }
+
+    private void pickPhoto() {
+        Intent intent = new Intent(Intent.ACTION_GET_CONTENT);
+        intent.setType("image/*");
+        intent.addCategory(Intent.CATEGORY_OPENABLE);
+        picker.launch(Intent.createChooser(intent, getString(R.string.pick_photo)));
+    }
+
+    private void onPhotoPicked(Uri uri) {
+        if (uri == null) return;
+        Context app = getApplicationContext();
+        String peer = peerName;
+        imageWorker.execute(() -> {
+            String name = ImageStore.saveFromUri(app, uri);
+            if (name == null) {
+                main.post(() -> Toast.makeText(app, R.string.photo_failed,
+                        Toast.LENGTH_LONG).show());
+                return;
+            }
+            Intent intent = new Intent(app, OffTheGridService.class);
+            intent.setAction(OffTheGridService.ACTION_SEND_IMAGE);
+            intent.putExtra(OffTheGridService.EXTRA_PEER, peer);
+            intent.putExtra(OffTheGridService.EXTRA_IMAGE, name);
+            try {
+                app.startService(intent);
+            } catch (IllegalStateException e) {
+                Log.w(TAG, "Could not start service for photo", e);
+                ImageStore.delete(app, name);
+            }
+        });
     }
 
     private void pingLoop(int generation) {
@@ -113,10 +159,12 @@ public class ChatActivity extends AppCompatActivity {
                 int senderIndex = cursor.getColumnIndexOrThrow(MessageStorage.COL_SENDER);
                 int textIndex = cursor.getColumnIndexOrThrow(MessageStorage.COL_TEXT);
                 int statusIndex = cursor.getColumnIndexOrThrow(MessageStorage.COL_STATUS);
+                int imageIndex = cursor.getColumnIndexOrThrow(MessageStorage.COL_IMAGE);
                 while (cursor.moveToNext()) {
                     boolean sent = MessageStorage.ME.equals(cursor.getString(senderIndex));
                     list.add(new Message(cursor.getLong(idIndex), cursor.getString(uidIndex),
-                            cursor.getString(textIndex), sent, cursor.getInt(statusIndex)));
+                            cursor.getString(textIndex), sent, cursor.getInt(statusIndex),
+                            cursor.getString(imageIndex)));
                 }
             }
         }
@@ -253,6 +301,7 @@ public class ChatActivity extends AppCompatActivity {
     protected void onDestroy() {
         Log.d(TAG, "onDestroy");
         pinger.shutdownNow();
+        imageWorker.shutdownNow();
         super.onDestroy();
     }
 }

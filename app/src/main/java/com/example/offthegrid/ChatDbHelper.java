@@ -6,7 +6,7 @@ import android.database.sqlite.SQLiteOpenHelper;
 
 public class ChatDbHelper extends SQLiteOpenHelper {
     private static final String DB_NAME = "offthegrid.db";
-    private static final int DB_VERSION = 2;
+    private static final int DB_VERSION = 3;
 
     public ChatDbHelper(Context context) {
         super(context, DB_NAME, null, DB_VERSION);
@@ -21,7 +21,8 @@ public class ChatDbHelper extends SQLiteOpenHelper {
                 + MessageStorage.COL_TIMESTAMP + " INTEGER NOT NULL, "
                 + MessageStorage.COL_PEER + " TEXT NOT NULL, "
                 + MessageStorage.COL_STATUS + " INTEGER NOT NULL DEFAULT 0, "
-                + MessageStorage.COL_UID + " TEXT)");
+                + MessageStorage.COL_UID + " TEXT, "
+                + MessageStorage.COL_IMAGE + " TEXT)");
     }
 
     @Override
@@ -29,6 +30,10 @@ public class ChatDbHelper extends SQLiteOpenHelper {
         if (oldVersion < 2) {
             db.execSQL("ALTER TABLE " + MessageStorage.TABLE
                     + " ADD COLUMN " + MessageStorage.COL_UID + " TEXT");
+        }
+        if (oldVersion < 3) {
+            db.execSQL("ALTER TABLE " + MessageStorage.TABLE
+                    + " ADD COLUMN " + MessageStorage.COL_IMAGE + " TEXT");
         }
     }
 }

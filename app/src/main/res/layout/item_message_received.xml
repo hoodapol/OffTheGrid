@@ -24,4 +24,14 @@
         android:textColor="?android:attr/textColorPrimary"
         android:textSize="15sp" />
 
+    <ImageView
+        android:id="@+id/ivImage"
+        android:layout_width="240dp"
+        android:layout_height="wrap_content"
+        android:adjustViewBounds="true"
+        android:contentDescription="@string/photo_description"
+        android:maxHeight="320dp"
+        android:scaleType="fitCenter"
+        android:visibility="gone" />
+
 </LinearLayout>

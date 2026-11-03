@@ -80,4 +80,10 @@
     <string name="restore_nothing">No new messages to restore.</string>
     <string name="restore_code_needed">Enter a backup code.</string>
     <string name="firebase_failed">Couldn\'t reach Firebase. Check your internet connection and try again.</string>
+    <string name="attach_photo">Send a photo</string>
+    <string name="pick_photo">Choose a photo</string>
+    <string name="photo_failed">Couldn\'t use that photo.</string>
+    <string name="photo_missing">Photo unavailable</string>
+    <string name="photo_description">Photo</string>
+    <string name="photo_preview">Photo</string>
 </resources>
