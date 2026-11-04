@@ -23,7 +23,7 @@ public class ListenerService extends Service {
     public static final int PORT = 5050;
 
     private static final String TAG = "ListenerService";
-    private static final int READ_TIMEOUT_MS = 5000;
+    private static final int READ_TIMEOUT_MS = 10000;
 
     private ExecutorService workers;
     private NsdHelper nsdHelper;
@@ -82,7 +82,12 @@ public class ListenerService extends Service {
             } else if (Wire.MSG.equals(packet.type)) {
                 if (isSelf(packet)) return;
                 String key = rememberSender(connection, packet);
-                MessageSink.receive(getApplicationContext(), key, packet.text, packet.id);
+                if (packet.image.isEmpty()) {
+                    MessageSink.receive(getApplicationContext(), key, packet.text, packet.id);
+                } else if (!MessageSink.receiveImage(
+                        getApplicationContext(), key, packet.image, packet.id)) {
+                    return;
+                }
                 Wire.writeLine(out, Wire.ack());
             } else if (Wire.DEL.equals(packet.type)) {
                 if (isSelf(packet)) return;

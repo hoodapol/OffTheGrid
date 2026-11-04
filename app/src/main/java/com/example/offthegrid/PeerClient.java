@@ -13,6 +13,7 @@ public final class PeerClient {
 
     private static final String TAG = "PeerClient";
     private static final int TIMEOUT_MS = 3000;
+    private static final int IMAGE_TIMEOUT_MS = 15000;
 
     private PeerClient() {
     }
@@ -39,7 +40,7 @@ public final class PeerClient {
 
     private static Wire.Packet requestIdentity(Context context, String host, int port)
             throws IOException {
-        try (Socket socket = open(host, port);
+        try (Socket socket = open(host, port, TIMEOUT_MS);
              BufferedWriter out = Wire.writer(socket);
              BufferedReader in = Wire.reader(socket)) {
             Wire.writeLine(out, Wire.hello(Profile.getName(context), Profile.getId(context)));
@@ -53,18 +54,25 @@ public final class PeerClient {
 
     public static boolean sendMessage(Context context, String peer, String uid, String text) {
         return sendAndAwaitAck(peer, Wire.message(
-                Profile.getName(context), Profile.getId(context), uid, text));
+                Profile.getName(context), Profile.getId(context), uid, text, ""), TIMEOUT_MS);
+    }
+
+    public static boolean sendImage(Context context, String peer, String uid, String image) {
+        String data = ImageStore.readBase64(context, image);
+        if (data == null) return false;
+        return sendAndAwaitAck(peer, Wire.message(
+                Profile.getName(context), Profile.getId(context), uid, "", data), IMAGE_TIMEOUT_MS);
     }
 
     public static boolean sendDelete(Context context, String peer, String uid) {
         return sendAndAwaitAck(peer, Wire.delete(
-                Profile.getName(context), Profile.getId(context), uid));
+                Profile.getName(context), Profile.getId(context), uid), TIMEOUT_MS);
     }
 
-    private static boolean sendAndAwaitAck(String peer, String line) {
+    private static boolean sendAndAwaitAck(String peer, String line, int readTimeoutMs) {
         PeerRegistry.Address address = PeerRegistry.get(peer);
         if (address == null) return false;
-        try (Socket socket = open(address.host, address.port);
+        try (Socket socket = open(address.host, address.port, readTimeoutMs);
              BufferedWriter out = Wire.writer(socket);
              BufferedReader in = Wire.reader(socket)) {
             Wire.writeLine(out, line);
@@ -76,11 +84,11 @@ public final class PeerClient {
         }
     }
 
-    private static Socket open(String host, int port) throws IOException {
+    private static Socket open(String host, int port, int readTimeoutMs) throws IOException {
         Socket socket = new Socket();
         try {
             socket.connect(new InetSocketAddress(host, port), TIMEOUT_MS);
-            socket.setSoTimeout(TIMEOUT_MS);
+            socket.setSoTimeout(readTimeoutMs);
         } catch (IOException e) {
             socket.close();
             throw e;

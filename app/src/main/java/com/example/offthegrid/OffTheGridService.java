@@ -39,11 +39,13 @@ public class OffTheGridService extends Service {
         final long id;
         final String uid;
         final String text;
+        final String image;
 
-        PendingMessage(long id, String uid, String text) {
+        PendingMessage(long id, String uid, String text, String image) {
             this.id = id;
             this.uid = uid;
             this.text = text;
+            this.image = image;
         }
     }
 
@@ -102,15 +104,23 @@ public class OffTheGridService extends Service {
 
     private void sendImage(String peer, String image) {
         String uid = UUID.randomUUID().toString();
-        MessageSink.save(this, MessageStorage.ME, peer, "", MessageStorage.STATUS_PENDING, uid,
-                image);
+        Uri row = MessageSink.save(this, MessageStorage.ME, peer, "",
+                MessageStorage.STATUS_PENDING, uid, image);
         MessageSink.broadcastSaved(this, peer);
+        if (row != null && PeerClient.sendImage(this, peer, uid, image)) {
+            MessageSink.setStatus(this, ContentUris.parseId(row), MessageStorage.STATUS_DONE);
+            MessageSink.broadcastSaved(this, peer);
+        }
     }
 
     private void retry(String peer) {
         boolean changed = false;
         for (PendingMessage item : loadPending(peer)) {
-            if (!PeerClient.sendMessage(this, peer, item.uid, item.text)) break;
+            if (item.image != null && !ImageStore.file(this, item.image).exists()) continue;
+            boolean sent = item.image == null
+                    ? PeerClient.sendMessage(this, peer, item.uid, item.text)
+                    : PeerClient.sendImage(this, peer, item.uid, item.image);
+            if (!sent) break;
             MessageSink.setStatus(this, item.id, MessageStorage.STATUS_DONE);
             changed = true;
         }
@@ -127,8 +137,7 @@ public class OffTheGridService extends Service {
                 MessageStorage.COL_PEER + "=? AND "
                         + MessageStorage.COL_SENDER + "=? AND "
                         + MessageStorage.COL_STATUS + "=? AND "
-                        + MessageStorage.COL_UID + " IS NOT NULL AND "
-                        + MessageStorage.COL_IMAGE + " IS NULL",
+                        + MessageStorage.COL_UID + " IS NOT NULL",
                 new String[]{peer, MessageStorage.ME,
                         String.valueOf(MessageStorage.STATUS_PENDING)},
                 MessageStorage.COL_TIMESTAMP + " ASC, " + MessageStorage.COL_ID + " ASC")) {
@@ -136,9 +145,11 @@ public class OffTheGridService extends Service {
                 int idIndex = cursor.getColumnIndexOrThrow(MessageStorage.COL_ID);
                 int uidIndex = cursor.getColumnIndexOrThrow(MessageStorage.COL_UID);
                 int textIndex = cursor.getColumnIndexOrThrow(MessageStorage.COL_TEXT);
+                int imageIndex = cursor.getColumnIndexOrThrow(MessageStorage.COL_IMAGE);
                 while (cursor.moveToNext()) {
                     list.add(new PendingMessage(cursor.getLong(idIndex),
-                            cursor.getString(uidIndex), cursor.getString(textIndex)));
+                            cursor.getString(uidIndex), cursor.getString(textIndex),
+                            cursor.getString(imageIndex)));
                 }
             }
         }

@@ -122,6 +122,20 @@ public final class MessageSink {
         notifyIncoming(context, peer, text);
     }
 
+    public static boolean receiveImage(Context context, String peer, String data, String uid) {
+        if (uid != null && alreadyReceived(context, peer, uid)) return true;
+        String name = ImageStore.saveBase64(context, data);
+        if (name == null) return false;
+        Uri row = save(context, peer, peer, "", MessageStorage.STATUS_DONE, uid, name);
+        if (row == null) {
+            ImageStore.delete(context, name);
+            return false;
+        }
+        broadcastSaved(context, peer);
+        notifyIncoming(context, peer, context.getString(R.string.photo_preview));
+        return true;
+    }
+
     private static boolean alreadyReceived(Context context, String peer, String uid) {
         try (Cursor cursor = context.getContentResolver().query(
                 MessageStorage.CONTENT_URI,

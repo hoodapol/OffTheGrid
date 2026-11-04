@@ -6,11 +6,13 @@ import android.graphics.BitmapFactory;
 import android.graphics.Matrix;
 import android.media.ExifInterface;
 import android.net.Uri;
+import android.util.Base64;
 import android.util.Log;
 import android.util.LruCache;
 
 import java.io.ByteArrayOutputStream;
 import java.io.File;
+import java.io.FileInputStream;
 import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
@@ -23,6 +25,7 @@ public final class ImageStore {
     private static final int MAX_SIDE = 1024;
     private static final int MAX_BYTES = 300 * 1024;
     private static final int THUMB_SIDE = 600;
+    private static final int MAX_RECEIVED_BYTES = 2 * 1024 * 1024;
 
     private static final LruCache<String, Bitmap> CACHE =
             new LruCache<String, Bitmap>(cacheSizeKb()) {
@@ -51,6 +54,43 @@ public final class ImageStore {
             return name;
         } catch (IOException | RuntimeException | OutOfMemoryError e) {
             Log.w(TAG, "Could not save image", e);
+            return null;
+        }
+    }
+
+    public static String saveBase64(Context context, String data) {
+        if (data == null || data.length() > MAX_RECEIVED_BYTES * 4 / 3 + 8) return null;
+        try {
+            byte[] bytes = Base64.decode(data, Base64.DEFAULT);
+            if (bytes.length == 0 || bytes.length > MAX_RECEIVED_BYTES) return null;
+            BitmapFactory.Options bounds = new BitmapFactory.Options();
+            bounds.inJustDecodeBounds = true;
+            BitmapFactory.decodeByteArray(bytes, 0, bytes.length, bounds);
+            if (bounds.outWidth <= 0 || bounds.outHeight <= 0) return null;
+            String name = UUID.randomUUID().toString() + ".jpg";
+            try (FileOutputStream out = new FileOutputStream(file(context, name))) {
+                out.write(bytes);
+            }
+            return name;
+        } catch (IllegalArgumentException | IOException e) {
+            Log.w(TAG, "Could not save received image", e);
+            return null;
+        }
+    }
+
+    public static String readBase64(Context context, String name) {
+        File file = file(context, name);
+        if (!file.exists()) return null;
+        try (InputStream in = new FileInputStream(file);
+             ByteArrayOutputStream out = new ByteArrayOutputStream()) {
+            byte[] buffer = new byte[8192];
+            int read;
+            while ((read = in.read(buffer)) != -1) {
+                out.write(buffer, 0, read);
+            }
+            return Base64.encodeToString(out.toByteArray(), Base64.NO_WRAP);
+        } catch (IOException e) {
+            Log.w(TAG, "Could not read image", e);
             return null;
         }
     }
