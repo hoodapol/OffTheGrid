@@ -64,7 +64,6 @@
     <string name="backup_button">Back up messages</string>
     <string name="restore_button">Restore messages</string>
     <string name="backup_confirm_title">Back up messages?</string>
-    <string name="backup_confirm_body">This uploads all your messages to Firebase, so they will no longer be only on your phone. Continue?</string>
     <string name="backup_action">Back up</string>
     <string name="backup_working">Backing up…</string>
     <string name="backup_done_title">Backup complete</string>
@@ -86,4 +85,5 @@
     <string name="photo_missing">Photo unavailable</string>
     <string name="photo_description">Photo</string>
     <string name="photo_preview">Photo</string>
+    <string name="backup_confirm_body">This uploads all your messages and photos to Firebase, so they will no longer be only on your phone. Continue?</string>
 </resources>
