@@ -6,7 +6,10 @@
         <item name="colorSecondary">@color/otg_accent</item>
         <item name="colorSecondaryVariant">@color/otg_accent</item>
         <item name="colorOnSecondary">@color/white</item>
+        <item name="colorSurface">@color/otg_surface</item>
+        <item name="colorOnSurface">@color/otg_text_primary</item>
         <item name="android:colorBackground">@color/otg_background</item>
+        <item name="android:windowBackground">@color/otg_background</item>
         <item name="android:colorBackgroundFloating">@color/otg_surface</item>
         <item name="android:textColorPrimary">@color/otg_text_primary</item>
         <item name="android:textColorSecondary">@color/otg_text_secondary</item>
@@ -14,5 +17,10 @@
         <item name="android:statusBarColor">@color/otg_bar_dark</item>
         <item name="android:fontFamily">@font/poppins</item>
         <item name="fontFamily">@font/poppins</item>
+    </style>
+
+    <style name="RoundedLogo" parent="">
+        <item name="cornerFamily">rounded</item>
+        <item name="cornerSize">32dp</item>
     </style>
 </resources>

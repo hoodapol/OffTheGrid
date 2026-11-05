@@ -30,6 +30,8 @@
     <string name="you_are">You are %1$s</string>
     <string name="save">Save</string>
     <string name="splash_logo_description">OffTheGrid logo</string>
+    <string name="splash_tagline">YOUR CONVERSATIONS, RIGHT NEARBY</string>
+    <string name="start">Start</string>
     <string name="tab_nearby">Nearby</string>
     <string name="tab_chats">Chats</string>
     <string name="tab_profile">Profile</string>

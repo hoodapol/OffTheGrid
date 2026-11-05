@@ -1,32 +1,30 @@
 <?xml version="1.0" encoding="utf-8"?>
 <LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
-    android:background="?android:attr/colorBackground"
+    android:background="@color/otg_background"
     android:fitsSystemWindows="true"
     android:gravity="center_horizontal"
     android:orientation="vertical"
     android:paddingStart="28dp"
-    android:paddingTop="72dp"
+    android:paddingTop="48dp"
     android:paddingEnd="28dp">
 
-    <TextView
-        android:layout_width="80dp"
-        android:layout_height="80dp"
-        android:background="@drawable/bg_avatar"
-        android:contentDescription="@string/chat_avatar_description"
-        android:gravity="center"
-        android:text="@string/chat_avatar"
-        android:textColor="@color/otg_on_primary"
-        android:textSize="32sp"
-        android:textStyle="bold" />
+    <com.google.android.material.imageview.ShapeableImageView
+        android:layout_width="170dp"
+        android:layout_height="170dp"
+        android:contentDescription="@string/splash_logo_description"
+        android:scaleType="centerCrop"
+        android:src="@drawable/splash_logo"
+        app:shapeAppearanceOverlay="@style/RoundedLogo" />
 
     <TextView
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
         android:layout_marginTop="24dp"
         android:text="@string/setup_title"
-        android:textColor="?android:attr/textColorPrimary"
+        android:textColor="@color/otg_text_primary"
         android:textSize="24sp"
         android:textStyle="bold" />
 
@@ -36,13 +34,13 @@
         android:layout_marginTop="8dp"
         android:gravity="center"
         android:text="@string/setup_subtitle"
-        android:textColor="?android:attr/textColorSecondary"
+        android:textColor="@color/otg_text_secondary"
         android:textSize="14sp" />
 
     <EditText
         android:id="@+id/etName"
         android:layout_width="match_parent"
-        android:layout_height="48dp"
+        android:layout_height="56dp"
         android:layout_marginTop="32dp"
         android:background="@drawable/bg_input"
         android:hint="@string/name_hint"
@@ -50,16 +48,16 @@
         android:inputType="textPersonName|textCapWords"
         android:maxLength="24"
         android:maxLines="1"
-        android:paddingStart="18dp"
-        android:paddingEnd="18dp"
-        android:textColor="?android:attr/textColorPrimary"
-        android:textColorHint="?android:attr/textColorHint"
-        android:textSize="14sp" />
+        android:paddingStart="24dp"
+        android:paddingEnd="24dp"
+        android:textColor="@color/otg_text_primary"
+        android:textColorHint="@color/otg_text_secondary"
+        android:textSize="15sp" />
 
     <androidx.appcompat.widget.AppCompatButton
         android:id="@+id/btnGetStarted"
         android:layout_width="match_parent"
-        android:layout_height="52dp"
+        android:layout_height="56dp"
         android:layout_marginTop="16dp"
         android:background="@drawable/bg_primary_button"
         android:text="@string/get_started"

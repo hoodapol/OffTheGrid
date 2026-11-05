@@ -1,12 +1,19 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <color name="otg_primary">#647CE4</color>
-    <color name="otg_on_primary">#0C142C</color>
-    <color name="otg_accent">#8DA0F2</color>
-    <color name="otg_background">#0C142C</color>
-    <color name="otg_surface">#172240</color>
-    <color name="otg_text_primary">#F3F6EF</color>
-    <color name="otg_text_secondary">#A9B0CC</color>
-    <color name="otg_bar">#172240</color>
-    <color name="otg_bar_dark">#0C142C</color>
+    <color name="otg_primary">#E9DDD3</color>
+    <color name="otg_on_primary">#2A1C19</color>
+    <color name="otg_accent">#D9785F</color>
+    <color name="otg_background">#1C1412</color>
+    <color name="otg_surface">#2A201D</color>
+    <color name="otg_outline">#4A3C37</color>
+    <color name="otg_pill">#2F2421</color>
+    <color name="otg_text_primary">#F1E9E3</color>
+    <color name="otg_text_secondary">#A89A93</color>
+    <color name="otg_bar">#2A201D</color>
+    <color name="otg_bar_dark">#1C1412</color>
+
+    <color name="otg_pill_brown">#8A5A44</color>
+    <color name="otg_pill_sand">#C9A98F</color>
+    <color name="otg_pill_sand_light">#CDBBAA</color>
+    <color name="otg_pill_rose">#D8A89B</color>
 </resources>
