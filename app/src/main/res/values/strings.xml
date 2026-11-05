@@ -33,6 +33,7 @@
     <string name="splash_tagline">YOUR CONVERSATIONS, RIGHT NEARBY</string>
     <string name="start">Start</string>
     <string name="tab_nearby">Nearby</string>
+    <string name="nearby_empty_hint">No one nearby yet.</string>
     <string name="tab_chats">Chats</string>
     <string name="tab_profile">Profile</string>
     <string name="chats_title">Chats</string>
@@ -78,7 +79,7 @@
     <string name="restore_action">Restore</string>
     <string name="restore_working">Restoring…</string>
     <string name="restore_done">Restored %1$d messages.</string>
-    <string name="restore_nothing">No new messages to restore.</string>
+    <string name="restore_nothing">Nothing to restore for this code. Check the code, or the messages are already on this phone.</string>
     <string name="restore_code_needed">Enter a backup code.</string>
     <string name="firebase_failed">Couldn\'t reach Firebase. Check your internet connection and try again.</string>
     <string name="attach_photo">Send a photo</string>
@@ -88,4 +89,27 @@
     <string name="photo_description">Photo</string>
     <string name="photo_preview">Photo</string>
     <string name="backup_confirm_body">This uploads all your messages and photos to Firebase, so they will no longer be only on your phone. Continue?</string>
+    <string name="stat_posts">Posts</string>
+    <string name="stat_friends">Friends</string>
+    <string name="more_options">More options</string>
+    <string name="restore_message">Enter the backup code you saved when you backed up. After a reinstall it is not this phone\'s current ID.</string>
+    <string name="edit_profile_title">Edit profile</string>
+    <string name="edit_back">‹</string>
+    <string name="edit_back_description">Back</string>
+    <string name="edit_cover_hint">Tap to add a cover photo</string>
+    <string name="bio_hint">Write a short bio</string>
+    <string name="remove_cover">Remove cover</string>
+    <string name="remove_avatar">Remove photo</string>
+    <string name="new_post">New post</string>
+    <string name="post_publish">Post</string>
+    <string name="post_hint">What\'s happening nearby?</string>
+    <string name="add_photo">Add photo</string>
+    <string name="remove_photo">Remove photo</string>
+    <string name="post_visibility_label">Who can see this?</string>
+    <string name="visibility_everyone">Everyone nearby</string>
+    <string name="visibility_friends">Friends only</string>
+    <string name="post_empty_error">Write something or add a photo first.</string>
+    <string name="post_badge_friends">Friends</string>
+    <string name="crop_hint">Drag and pinch to fit the photo</string>
+    <string name="crop_done">Done</string>
 </resources>

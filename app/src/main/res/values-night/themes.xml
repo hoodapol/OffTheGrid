@@ -23,4 +23,16 @@
         <item name="cornerFamily">rounded</item>
         <item name="cornerSize">32dp</item>
     </style>
+    <style name="Theme.OffTheGrid.NoActionBar">
+        <item name="windowActionBar">false</item>
+        <item name="windowNoTitle">true</item>
+        <item name="android:statusBarColor">@color/otg_background</item>
+        <item name="android:windowLightStatusBar">false</item>
+    </style>
+    <style name="Theme.OffTheGrid.Chat">
+        <item name="actionBarStyle">@style/Widget.OffTheGrid.ActionBar</item>
+        <item name="actionBarTheme">@style/ThemeOverlay.OffTheGrid.ActionBar</item>
+        <item name="android:statusBarColor">@color/otg_background</item>
+        <item name="android:windowLightStatusBar">false</item>
+    </style>
 </resources>

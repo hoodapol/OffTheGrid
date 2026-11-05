@@ -3,20 +3,20 @@
     <color name="black">#FF000000</color>
     <color name="white">#FFFFFFFF</color>
 
-    <color name="otg_primary">#3A2824</color>
+    <color name="otg_primary">#437A5B</color>
     <color name="otg_on_primary">#FFFFFF</color>
-    <color name="otg_accent">#B4533F</color>
-    <color name="otg_background">#E9E4E0</color>
-    <color name="otg_surface">#F5F2EF</color>
-    <color name="otg_outline">#CFC8C3</color>
-    <color name="otg_pill">#D9D3CE</color>
-    <color name="otg_text_primary">#2A1C19</color>
-    <color name="otg_text_secondary">#857872</color>
-    <color name="otg_bar">#3A2824</color>
-    <color name="otg_bar_dark">#241714</color>
+    <color name="otg_accent">#8DAA74</color>
+    <color name="otg_background">#F5F4E4</color>
+    <color name="otg_surface">#FCFBF2</color>
+    <color name="otg_outline">#DAD8C2</color>
+    <color name="otg_pill">#E4E3CF</color>
+    <color name="otg_text_primary">#3F3F3F</color>
+    <color name="otg_text_secondary">#7A7A6E</color>
+    <color name="otg_bar">#437A5B</color>
+    <color name="otg_bar_dark">#2F5A42</color>
 
-    <color name="otg_pill_brown">#8A5A44</color>
-    <color name="otg_pill_sand">#C9A98F</color>
-    <color name="otg_pill_sand_light">#CDBBAA</color>
-    <color name="otg_pill_rose">#D8A89B</color>
+    <color name="otg_pill_brown">#3F3F3F</color>
+    <color name="otg_pill_sand">#B4C093</color>
+    <color name="otg_pill_sand_light">#EDE9A0</color>
+    <color name="otg_pill_rose">#7FA68A</color>
 </resources>

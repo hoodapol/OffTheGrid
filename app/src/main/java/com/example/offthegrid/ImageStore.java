@@ -57,7 +57,30 @@ public final class ImageStore {
             return null;
         }
     }
+    public static Bitmap load(Context context, String name) {
+        File file = file(context, name);
+        if (!file.exists()) return null;
+        try {
+            return BitmapFactory.decodeFile(file.getAbsolutePath());
+        } catch (OutOfMemoryError e) {
+            Log.w(TAG, "Could not load image", e);
+            return null;
+        }
+    }
 
+    public static String saveBitmap(Context context, Bitmap bitmap) {
+        try {
+            byte[] bytes = compress(bitmap);
+            String name = UUID.randomUUID().toString() + ".jpg";
+            try (FileOutputStream out = new FileOutputStream(file(context, name))) {
+                out.write(bytes);
+            }
+            return name;
+        } catch (IOException | RuntimeException | OutOfMemoryError e) {
+            Log.w(TAG, "Could not save bitmap", e);
+            return null;
+        }
+    }
     public static String saveBase64(Context context, String data) {
         if (data == null || data.length() > MAX_RECEIVED_BYTES * 4 / 3 + 8) return null;
         try {

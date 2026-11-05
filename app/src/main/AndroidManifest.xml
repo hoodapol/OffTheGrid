@@ -20,7 +20,10 @@
             android:name=".MessageProvider"
             android:authorities="com.example.offthegrid.provider"
             android:exported="false" />
-
+        <provider
+            android:name=".PostProvider"
+            android:authorities="com.example.offthegrid.postprovider"
+            android:exported="false" />
         <service
             android:name=".OffTheGridService"
             android:exported="false" />
@@ -41,19 +44,36 @@
 
         <activity
             android:name=".DiscoverActivity"
-            android:exported="false" />
-
+            android:exported="false"
+            android:theme="@style/Theme.OffTheGrid.NoActionBar" />
         <activity
             android:name=".SetupActivity"
             android:exported="false"
+            android:theme="@style/Theme.OffTheGrid.NoActionBar"
             android:windowSoftInputMode="adjustResize" />
 
         <activity
             android:name=".ChatActivity"
             android:exported="false"
             android:parentActivityName=".DiscoverActivity"
+            android:theme="@style/Theme.OffTheGrid.Chat"
             android:windowSoftInputMode="adjustResize" />
 
+        <activity
+            android:name=".EditProfileActivity"
+            android:exported="false"
+            android:theme="@style/Theme.OffTheGrid.NoActionBar"
+            android:windowSoftInputMode="adjustResize" />
+
+        <activity
+            android:name=".CreatePostActivity"
+            android:exported="false"
+            android:theme="@style/Theme.OffTheGrid.NoActionBar"
+            android:windowSoftInputMode="adjustResize" />
+        <activity
+            android:name=".CropActivity"
+            android:exported="false"
+            android:theme="@style/Theme.OffTheGrid.NoActionBar" />
     </application>
 
 </manifest>
