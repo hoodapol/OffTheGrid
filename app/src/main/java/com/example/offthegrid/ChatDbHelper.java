@@ -6,7 +6,16 @@ import android.database.sqlite.SQLiteOpenHelper;
 
 public class ChatDbHelper extends SQLiteOpenHelper {
     private static final String DB_NAME = "offthegrid.db";
-    private static final int DB_VERSION = 3;
+    private static final int DB_VERSION = 4;
+
+    private static ChatDbHelper instance;
+
+    public static synchronized ChatDbHelper getInstance(Context context) {
+        if (instance == null) {
+            instance = new ChatDbHelper(context.getApplicationContext());
+        }
+        return instance;
+    }
 
     public ChatDbHelper(Context context) {
         super(context, DB_NAME, null, DB_VERSION);
@@ -23,6 +32,7 @@ public class ChatDbHelper extends SQLiteOpenHelper {
                 + MessageStorage.COL_STATUS + " INTEGER NOT NULL DEFAULT 0, "
                 + MessageStorage.COL_UID + " TEXT, "
                 + MessageStorage.COL_IMAGE + " TEXT)");
+        createPosts(db);
     }
 
     @Override
@@ -35,5 +45,19 @@ public class ChatDbHelper extends SQLiteOpenHelper {
             db.execSQL("ALTER TABLE " + MessageStorage.TABLE
                     + " ADD COLUMN " + MessageStorage.COL_IMAGE + " TEXT");
         }
+        if (oldVersion < 4) {
+            createPosts(db);
+        }
+    }
+
+    private static void createPosts(SQLiteDatabase db) {
+        db.execSQL("CREATE TABLE IF NOT EXISTS " + PostStorage.TABLE + " ("
+                + PostStorage.COL_ID + " INTEGER PRIMARY KEY AUTOINCREMENT, "
+                + PostStorage.COL_UID + " TEXT NOT NULL UNIQUE, "
+                + PostStorage.COL_OWNER + " TEXT NOT NULL, "
+                + PostStorage.COL_TEXT + " TEXT NOT NULL, "
+                + PostStorage.COL_IMAGE + " TEXT, "
+                + PostStorage.COL_TIMESTAMP + " INTEGER NOT NULL, "
+                + PostStorage.COL_VISIBILITY + " INTEGER NOT NULL DEFAULT 0)");
     }
 }

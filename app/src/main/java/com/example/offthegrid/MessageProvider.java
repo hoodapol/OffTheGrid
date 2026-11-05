@@ -26,7 +26,7 @@ public class MessageProvider extends ContentProvider {
 
     @Override
     public boolean onCreate() {
-        helper = new ChatDbHelper(getContext());
+        helper = ChatDbHelper.getInstance(getContext());
         return true;
     }
 
