@@ -94,6 +94,22 @@ public class ListenerService extends Service {
                 String key = rememberSender(connection, packet);
                 MessageSink.deleteRemote(getApplicationContext(), key, packet.id);
                 Wire.writeLine(out, Wire.ack());
+            } else if (Wire.GET_PROFILE.equals(packet.type)) {
+                if (isSelf(packet)) return;
+                rememberSender(connection, packet);
+                boolean friend = FriendStore.isFriend(getApplicationContext(), packet.device);
+                Wire.writeLine(out, ProfileShare.build(getApplicationContext(), friend));
+            } else if (Wire.GET_AVATAR.equals(packet.type)) {
+                if (isSelf(packet)) return;
+                rememberSender(connection, packet);
+                Wire.writeLine(out, Wire.avatar(Profile.getName(this), Profile.getId(this),
+                        ImageStore.readScaledBase64(getApplicationContext(),
+                                Profile.getAvatar(this), 128, 12 * 1024)));
+            } else if (Wire.FRIEND.equals(packet.type)) {
+                if (isSelf(packet)) return;
+                String key = rememberSender(connection, packet);
+                FriendActions.onIncoming(getApplicationContext(), key, packet.device, packet.text);
+                Wire.writeLine(out, Wire.ack());
             }
         } catch (IOException e) {
             Log.w(TAG, "Connection failed", e);

@@ -19,9 +19,15 @@ public final class Wire {
     public static final String MSG = "MSG";
     public static final String DEL = "DEL";
     public static final String ACK = "ACK";
+    public static final String GET_PROFILE = "GET_PROFILE";
+    public static final String PROFILE = "PROFILE";
+    public static final String GET_AVATAR = "GET_AVATAR";
+    public static final String AVATAR = "AVATAR";
+    public static final String FRIEND = "FRIEND";
 
     private static final String TAG = "Wire";
     private static final int LOG_LIMIT = 300;
+    private static final int MAX_LINE = 6 * 1024 * 1024;
 
     private Wire() {
     }
@@ -33,19 +39,38 @@ public final class Wire {
         public final String id;
         public final String text;
         public final String image;
+        public final String body;
 
-        Packet(String type, String name, String device, String id, String text, String image) {
+        Packet(String type, String name, String device, String id, String text, String image,
+               String body) {
             this.type = type;
             this.name = name;
             this.device = device;
             this.id = id;
             this.text = text;
             this.image = image;
+            this.body = body;
         }
     }
 
     public static String hello(String name, String device) {
         return build(HELLO, name, device, "", "", "");
+    }
+
+    public static String getProfile(String name, String device) {
+        return build(GET_PROFILE, name, device, "", "", "");
+    }
+
+    public static String getAvatar(String name, String device) {
+        return build(GET_AVATAR, name, device, "", "", "");
+    }
+
+    public static String avatar(String name, String device, String image) {
+        return build(AVATAR, name, device, "", "", image);
+    }
+
+    public static String friend(String name, String device, String action) {
+        return build(FRIEND, name, device, "", action, "");
     }
 
     public static String message(String name, String device, String id, String text, String image) {
@@ -61,7 +86,7 @@ public final class Wire {
     }
 
     public static Packet parse(String line) {
-        if (line == null) return null;
+        if (line == null || line.length() > MAX_LINE) return null;
         try {
             JSONObject json = new JSONObject(line);
             String type = json.optString("type");
@@ -73,12 +98,21 @@ public final class Wire {
             if (MSG.equals(type) || DEL.equals(type)) {
                 Log.d(TAG, "In: " + brief(line));
             }
-            if (ACK.equals(type)) return new Packet(ACK, "", "", "", "", "");
+            if (ACK.equals(type)) return new Packet(ACK, "", "", "", "", "", "");
             if (name.isEmpty() || device.isEmpty()) return null;
-            if (HELLO.equals(type)) return new Packet(HELLO, name, device, "", "", "");
+            if (HELLO.equals(type)) return new Packet(HELLO, name, device, "", "", "", "");
+            if (GET_PROFILE.equals(type)) {
+                return new Packet(GET_PROFILE, name, device, "", "", "", "");
+            }
+            if (PROFILE.equals(type)) return new Packet(PROFILE, name, device, "", "", "", line);
+            if (GET_AVATAR.equals(type)) {
+                return new Packet(GET_AVATAR, name, device, "", "", "", "");
+            }
+            if (AVATAR.equals(type)) return new Packet(AVATAR, name, device, "", "", image, "");
+            if (FRIEND.equals(type)) return new Packet(FRIEND, name, device, "", text, "", "");
             if (id.isEmpty()) return null;
-            if (MSG.equals(type)) return new Packet(MSG, name, device, id, text, image);
-            if (DEL.equals(type)) return new Packet(DEL, name, device, id, "", "");
+            if (MSG.equals(type)) return new Packet(MSG, name, device, id, text, image, "");
+            if (DEL.equals(type)) return new Packet(DEL, name, device, id, "", "", "");
             return null;
         } catch (JSONException e) {
             return null;

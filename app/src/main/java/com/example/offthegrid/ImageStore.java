@@ -57,6 +57,7 @@ public final class ImageStore {
             return null;
         }
     }
+
     public static Bitmap load(Context context, String name) {
         File file = file(context, name);
         if (!file.exists()) return null;
@@ -81,6 +82,29 @@ public final class ImageStore {
             return null;
         }
     }
+
+    public static String readScaledBase64(Context context, String name, int maxSide,
+                                          int maxBytes) {
+        if (name == null) return "";
+        File file = file(context, name);
+        if (!file.exists()) return "";
+        try {
+            BitmapFactory.Options bounds = new BitmapFactory.Options();
+            bounds.inJustDecodeBounds = true;
+            BitmapFactory.decodeFile(file.getAbsolutePath(), bounds);
+            if (bounds.outWidth <= 0 || bounds.outHeight <= 0) return "";
+            BitmapFactory.Options options = new BitmapFactory.Options();
+            options.inSampleSize = sampleSize(bounds.outWidth, bounds.outHeight, maxSide);
+            Bitmap bitmap = BitmapFactory.decodeFile(file.getAbsolutePath(), options);
+            if (bitmap == null) return "";
+            bitmap = scaleDown(bitmap, maxSide);
+            return Base64.encodeToString(compress(bitmap, maxBytes), Base64.NO_WRAP);
+        } catch (RuntimeException | OutOfMemoryError e) {
+            Log.w(TAG, "Could not read scaled image", e);
+            return "";
+        }
+    }
+
     public static String saveBase64(Context context, String data) {
         if (data == null || data.length() > MAX_RECEIVED_BYTES * 4 / 3 + 8) return null;
         try {
@@ -229,10 +253,14 @@ public final class ImageStore {
     }
 
     private static byte[] compress(Bitmap bitmap) {
+        return compress(bitmap, MAX_BYTES);
+    }
+
+    private static byte[] compress(Bitmap bitmap, int maxBytes) {
         Bitmap current = bitmap;
         int quality = 85;
         byte[] bytes = encode(current, quality);
-        while (bytes.length > MAX_BYTES) {
+        while (bytes.length > maxBytes) {
             if (quality > 45) {
                 quality -= 10;
             } else {

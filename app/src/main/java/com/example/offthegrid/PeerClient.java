@@ -1,6 +1,9 @@
 package com.example.offthegrid;
 
 import android.content.Context;
+import android.graphics.Bitmap;
+import android.graphics.BitmapFactory;
+import android.util.Base64;
 import android.util.Log;
 
 import java.io.BufferedReader;
@@ -14,6 +17,7 @@ public final class PeerClient {
     private static final String TAG = "PeerClient";
     private static final int TIMEOUT_MS = 3000;
     private static final int IMAGE_TIMEOUT_MS = 15000;
+    private static final int PROFILE_TIMEOUT_MS = 20000;
 
     private PeerClient() {
     }
@@ -67,6 +71,46 @@ public final class PeerClient {
     public static boolean sendDelete(Context context, String peer, String uid) {
         return sendAndAwaitAck(peer, Wire.delete(
                 Profile.getName(context), Profile.getId(context), uid), TIMEOUT_MS);
+    }
+
+    public static boolean sendFriend(Context context, String peer, String action) {
+        return sendAndAwaitAck(peer, Wire.friend(
+                Profile.getName(context), Profile.getId(context), action), TIMEOUT_MS);
+    }
+
+    public static Bitmap fetchAvatar(Context context, String peer) {
+        PeerRegistry.Address address = PeerRegistry.get(peer);
+        if (address == null) return null;
+        try (Socket socket = open(address.host, address.port, TIMEOUT_MS);
+             BufferedWriter out = Wire.writer(socket);
+             BufferedReader in = Wire.reader(socket)) {
+            Wire.writeLine(out, Wire.getAvatar(Profile.getName(context), Profile.getId(context)));
+            Wire.Packet reply = Wire.parse(in.readLine());
+            if (reply == null || !Wire.AVATAR.equals(reply.type)) return null;
+            if (!address.deviceId.equals(reply.device) || reply.image.isEmpty()) return null;
+            byte[] bytes = Base64.decode(reply.image, Base64.DEFAULT);
+            return BitmapFactory.decodeByteArray(bytes, 0, bytes.length);
+        } catch (IOException | IllegalArgumentException e) {
+            Log.w(TAG, "Avatar fetch from " + peer + " failed", e);
+            return null;
+        }
+    }
+
+    public static RemoteProfile fetchProfile(Context context, String peer) {
+        PeerRegistry.Address address = PeerRegistry.get(peer);
+        if (address == null) return null;
+        try (Socket socket = open(address.host, address.port, PROFILE_TIMEOUT_MS);
+             BufferedWriter out = Wire.writer(socket);
+             BufferedReader in = Wire.reader(socket)) {
+            Wire.writeLine(out, Wire.getProfile(Profile.getName(context), Profile.getId(context)));
+            Wire.Packet reply = Wire.parse(in.readLine());
+            if (reply == null || !Wire.PROFILE.equals(reply.type)) return null;
+            if (!address.deviceId.equals(reply.device)) return null;
+            return RemoteProfile.parse(reply.body);
+        } catch (IOException e) {
+            Log.w(TAG, "Profile fetch from " + peer + " failed", e);
+            return null;
+        }
     }
 
     private static boolean sendAndAwaitAck(String peer, String line, int readTimeoutMs) {
