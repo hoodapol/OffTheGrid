@@ -2,30 +2,30 @@
 <LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
     android:layout_width="match_parent"
     android:layout_height="wrap_content"
-    android:layout_marginStart="16dp"
+    android:layout_marginStart="20dp"
     android:layout_marginTop="6dp"
-    android:layout_marginEnd="16dp"
+    android:layout_marginEnd="20dp"
     android:layout_marginBottom="6dp"
     android:background="@drawable/bg_card"
-    android:elevation="1dp"
+    android:clickable="true"
+    android:focusable="true"
+    android:foreground="?attr/selectableItemBackground"
     android:gravity="center_vertical"
-    android:minHeight="76dp"
+    android:minHeight="80dp"
     android:orientation="horizontal"
     android:paddingStart="14dp"
     android:paddingTop="12dp"
     android:paddingEnd="16dp"
     android:paddingBottom="12dp">
 
-    <TextView
-        android:layout_width="52dp"
-        android:layout_height="52dp"
-        android:background="@drawable/bg_avatar"
+    <ImageView
+        android:layout_width="56dp"
+        android:layout_height="56dp"
+        android:background="@drawable/bg_avatar_ring"
         android:contentDescription="@string/peer_avatar_description"
-        android:gravity="center"
-        android:text="@string/peer_avatar"
-        android:textColor="@color/otg_on_primary"
-        android:textSize="19sp"
-        android:textStyle="bold" />
+        android:padding="15dp"
+        android:src="@drawable/ic_nav_profile"
+        android:tint="@color/otg_on_primary" />
 
     <LinearLayout
         android:layout_width="0dp"
@@ -41,25 +41,27 @@
             android:ellipsize="end"
             android:maxLines="1"
             android:text="@string/peer_name_placeholder"
-            android:textColor="?android:attr/textColorPrimary"
+            android:textColor="@color/otg_text_primary"
             android:textSize="16sp"
             android:textStyle="bold" />
 
         <TextView
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:layout_marginTop="4dp"
+            android:layout_marginTop="2dp"
             android:text="@string/peer_status"
-            android:textColor="?android:attr/textColorSecondary"
+            android:textColor="@color/otg_text_secondary"
             android:textSize="13sp" />
     </LinearLayout>
 
     <TextView
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
+        android:layout_width="40dp"
+        android:layout_height="40dp"
+        android:background="@drawable/bg_avatar"
+        android:gravity="center"
         android:importantForAccessibility="no"
         android:text="@string/open_chat"
-        android:textColor="?android:attr/textColorSecondary"
-        android:textSize="28sp" />
+        android:textColor="@color/otg_on_primary"
+        android:textSize="22sp" />
 
 </LinearLayout>
