@@ -11,6 +11,7 @@ import android.widget.Toast;
 import androidx.activity.result.ActivityResultLauncher;
 import androidx.activity.result.contract.ActivityResultContracts;
 import androidx.annotation.Nullable;
+import androidx.appcompat.app.AlertDialog;
 import androidx.appcompat.app.AppCompatActivity;
 
 import com.example.offthegrid.databinding.ActivityEditProfileBinding;
@@ -49,6 +50,16 @@ public class EditProfileActivity extends AppCompatActivity {
                 if (name != null) applyPhoto(name);
             });
 
+    private final ActivityResultLauncher<Intent> generator = registerForActivityResult(
+            new ActivityResultContracts.StartActivityForResult(), result -> {
+                if (result.getResultCode() != RESULT_OK || result.getData() == null) return;
+                String name = result.getData().getStringExtra(AvatarGenActivity.EXTRA_RESULT);
+                if (name != null) {
+                    forAvatar = true;
+                    applyPhoto(name);
+                }
+            });
+
     @Override
     protected void onCreate(@Nullable Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
@@ -63,7 +74,7 @@ public class EditProfileActivity extends AppCompatActivity {
         binding.etBio.setText(Profile.getBio(this));
 
         binding.btnBack.setOnClickListener(v -> finish());
-        binding.editAvatarArea.setOnClickListener(v -> avatarPicker.launch("image/*"));
+        binding.editAvatarArea.setOnClickListener(v -> chooseAvatarSource());
         binding.editCoverArea.setOnClickListener(v -> coverPicker.launch("image/*"));
         binding.btnRemoveAvatar.setOnClickListener(v -> {
             discardPending(avatarFile);
@@ -79,6 +90,23 @@ public class EditProfileActivity extends AppCompatActivity {
 
         refreshAvatar();
         refreshCover();
+    }
+
+    private void chooseAvatarSource() {
+        CharSequence[] options = {
+                getString(R.string.avatar_source_gallery),
+                getString(R.string.avatar_source_generate)
+        };
+        new AlertDialog.Builder(this)
+                .setTitle(R.string.avatar_source_title)
+                .setItems(options, (dialog, which) -> {
+                    if (which == 0) {
+                        avatarPicker.launch("image/*");
+                    } else {
+                        generator.launch(new Intent(this, AvatarGenActivity.class));
+                    }
+                })
+                .show();
     }
 
     private void prepare(Uri uri, boolean avatar) {

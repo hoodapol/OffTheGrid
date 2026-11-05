@@ -112,4 +112,37 @@
     <string name="post_badge_friends">Friends</string>
     <string name="crop_hint">Drag and pinch to fit the photo</string>
     <string name="crop_done">Done</string>
+    <string name="other_loading">Loading %1$s\'s profile…</string>
+    <string name="other_unreachable">Couldn\'t reach %1$s. They may have gone offline.</string>
+
+    <string name="profile_retry">Try again</string>
+    <string name="other_no_posts">No public posts yet</string>
+    <string name="profile_secure_note">Screenshots are blocked on profiles of people who aren\'t your friends.</string>
+    <string name="peer_card_subtitle">Nearby · tap the photo to see their profile</string>
+    <string name="peer_card_arrow">›</string>
+    <string name="peer_card_avatar_description">View profile</string>
+    <string name="section_requests">Friend requests</string>
+    <string name="section_friends">Friends</string>
+    <string name="section_others">Others</string>
+    <string name="friend_request_hint">wants to be your friend</string>
+    <string name="friend_request_notification">sent you a friend request</string>
+    <string name="friend_accept">Accept</string>
+    <string name="friend_decline">Decline</string>
+    <string name="friend_add">Add friend</string>
+    <string name="friend_request_sent">Request sent</string>
+    <string name="friend_friends">Friends ✓</string>
+    <string name="friend_say_hi">Say hi 👋</string>
+    <string name="friend_need_nearby">They need to be nearby to do this.</string>
+    <string name="friend_request_failed">Couldn\'t reach them. Try again when they are nearby.</string>
+    <string name="friend_unfriend">Unfriend</string>
+    <string name="friend_unfriend_title">Unfriend %1$s?</string>
+    <string name="friend_unfriend_body">You will stop seeing their friends-only posts, and they will stop seeing yours.</string>
+    <string name="friend_offline_banner">Offline · showing what they shared as of %1$s</string>
+    <string name="avatar_source_title">Profile photo</string>
+    <string name="avatar_source_gallery">Choose from gallery</string>
+    <string name="avatar_source_generate">Generate an avatar</string>
+    <string name="avatar_gen_title">Pick an avatar</string>
+    <string name="avatar_gen_shuffle">Shuffle</string>
+    <string name="avatar_gen_offline">Couldn\'t reach the avatar service. Check your internet connection, then tap Shuffle to try again.</string>
+    <string name="avatar_gen_save_failed">Couldn\'t save that avatar</string>
 </resources>
