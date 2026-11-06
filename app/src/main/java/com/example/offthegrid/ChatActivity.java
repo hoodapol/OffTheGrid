@@ -87,6 +87,13 @@ public class ChatActivity extends AppCompatActivity {
 
         binding.btnSend.setOnClickListener(v -> sendMessage());
         binding.btnAttach.setOnClickListener(v -> pickPhoto());
+        binding.chatHeader.setOnClickListener(v -> openProfile());
+    }
+
+    private void openProfile() {
+        Intent intent = new Intent(this, OtherProfileActivity.class);
+        intent.putExtra(EXTRA_PEER_NAME, peerName);
+        startActivity(intent);
     }
 
     private void pickPhoto() {

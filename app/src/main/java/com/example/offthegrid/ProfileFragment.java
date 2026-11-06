@@ -5,19 +5,16 @@ import android.content.ClipboardManager;
 import android.content.Context;
 import android.content.Intent;
 import android.graphics.Bitmap;
+import android.graphics.Color;
+import android.graphics.drawable.ColorDrawable;
 import android.os.Bundle;
 import android.text.format.DateFormat;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
 import android.widget.EditText;
-import android.widget.ImageView;
-import android.widget.LinearLayout;
-import android.widget.TextView;
 import android.widget.Toast;
-import android.graphics.Color;
-import android.graphics.drawable.ColorDrawable;
-import com.example.offthegrid.databinding.DialogPostBinding;
+
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 import androidx.appcompat.app.AlertDialog;
@@ -26,6 +23,7 @@ import androidx.fragment.app.Fragment;
 import androidx.recyclerview.widget.ConcatAdapter;
 import androidx.recyclerview.widget.GridLayoutManager;
 
+import com.example.offthegrid.databinding.DialogPostBinding;
 import com.example.offthegrid.databinding.FragmentProfileBinding;
 import com.example.offthegrid.databinding.ItemProfileHeaderBinding;
 
@@ -78,6 +76,7 @@ public class ProfileFragment extends Fragment {
         showAvatar(context, name);
         showCover(context);
         loadPosts(context);
+        header.tvStatFriends.setText(String.valueOf(FriendStore.count(context)));
     }
 
     private void showAvatar(Context context, String name) {
