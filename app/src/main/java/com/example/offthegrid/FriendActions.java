@@ -9,6 +9,7 @@ import android.app.PendingIntent;
 import android.content.Context;
 import android.content.Intent;
 import android.content.pm.PackageManager;
+import android.graphics.BitmapFactory;
 import android.os.Build;
 
 import androidx.core.app.NotificationCompat;
@@ -25,7 +26,8 @@ public final class FriendActions {
     public static final String DECLINE = "DECLINE";
     public static final String REMOVE = "REMOVE";
 
-    private static final String CHANNEL_ID = "friend_requests";
+    private static final String CHANNEL_ID = "friend_requests_v2";
+    private static final String OLD_CHANNEL_ID = "friend_requests";
     private static final ExecutorService WORKER = Executors.newSingleThreadExecutor();
 
     private FriendActions() {
@@ -81,18 +83,26 @@ public final class FriendActions {
             return;
         }
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+            NotificationManager manager = context.getSystemService(NotificationManager.class);
+            manager.deleteNotificationChannel(OLD_CHANNEL_ID);
             NotificationChannel channel = new NotificationChannel(
-                    CHANNEL_ID, "Friend requests", NotificationManager.IMPORTANCE_DEFAULT);
-            context.getSystemService(NotificationManager.class).createNotificationChannel(channel);
+                    CHANNEL_ID, "Friend requests", NotificationManager.IMPORTANCE_HIGH);
+            manager.createNotificationChannel(channel);
         }
         Intent open = new Intent(context, DiscoverActivity.class);
         PendingIntent pendingIntent = PendingIntent.getActivity(context, name.hashCode(), open,
                 PendingIntent.FLAG_IMMUTABLE | PendingIntent.FLAG_UPDATE_CURRENT);
         Notification notification = new NotificationCompat.Builder(context, CHANNEL_ID)
-                .setSmallIcon(android.R.drawable.stat_notify_chat)
+                .setSmallIcon(R.drawable.ic_stat_offthegrid)
+                .setColor(ContextCompat.getColor(context, R.color.otg_primary))
+                .setLargeIcon(BitmapFactory.decodeResource(context.getResources(),
+                        R.drawable.ic_notification_large))
                 .setContentTitle(name)
                 .setContentText(context.getString(R.string.friend_request_notification))
                 .setContentIntent(pendingIntent)
+                .setPriority(NotificationCompat.PRIORITY_HIGH)
+                .setCategory(NotificationCompat.CATEGORY_SOCIAL)
+                .setDefaults(NotificationCompat.DEFAULT_ALL)
                 .setAutoCancel(true)
                 .build();
         NotificationManagerCompat.from(context).notify(("friend:" + name).hashCode(), notification);

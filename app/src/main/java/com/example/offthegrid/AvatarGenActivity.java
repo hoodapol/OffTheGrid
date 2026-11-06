@@ -20,8 +20,6 @@ import com.example.offthegrid.databinding.ActivityAvatarGenBinding;
 
 import java.util.Locale;
 import java.util.Random;
-import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
 
 public class AvatarGenActivity extends AppCompatActivity {
 
@@ -42,7 +40,7 @@ public class AvatarGenActivity extends AppCompatActivity {
     private final TextView[] chips = new TextView[STYLES.length];
     private final Handler main = new Handler(Looper.getMainLooper());
     private final Random random = new Random();
-    private ExecutorService pool;
+    private final Object requestTag = new Object();
     private int styleIndex;
     private int generation;
     private int pending;
@@ -55,7 +53,6 @@ public class AvatarGenActivity extends AppCompatActivity {
         binding = ActivityAvatarGenBinding.inflate(getLayoutInflater());
         setContentView(binding.getRoot());
 
-        pool = Executors.newFixedThreadPool(3);
         adapter = new AvatarTileAdapter(COUNT, this::choose);
         binding.rvAvatars.setLayoutManager(new GridLayoutManager(this, COLUMNS));
         binding.rvAvatars.setAdapter(adapter);
@@ -103,6 +100,7 @@ public class AvatarGenActivity extends AppCompatActivity {
     }
 
     private void load() {
+        AvatarApi.cancel(this, requestTag);
         generation++;
         int current = generation;
         pending = COUNT;
@@ -115,9 +113,16 @@ public class AvatarGenActivity extends AppCompatActivity {
             int position = i;
             String seed = Long.toString(random.nextLong() & Long.MAX_VALUE, 36);
             String color = COLORS[i % COLORS.length];
-            pool.execute(() -> {
-                Bitmap bitmap = AvatarApi.fetch(style, seed, color);
-                main.post(() -> onTile(current, position, bitmap));
+            AvatarApi.fetch(this, requestTag, style, seed, color, new AvatarApi.Callback() {
+                @Override
+                public void onBitmap(Bitmap bitmap) {
+                    onTile(current, position, bitmap);
+                }
+
+                @Override
+                public void onFailure() {
+                    onTile(current, position, null);
+                }
             });
         }
     }
@@ -174,6 +179,6 @@ public class AvatarGenActivity extends AppCompatActivity {
     protected void onDestroy() {
         super.onDestroy();
         generation++;
-        pool.shutdownNow();
+        AvatarApi.cancel(this, requestTag);
     }
 }

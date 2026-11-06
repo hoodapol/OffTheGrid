@@ -154,9 +154,13 @@
             android:background="@color/otg_outline" />
 
         <LinearLayout
+            android:id="@+id/btnStatFriends"
             android:layout_width="0dp"
             android:layout_height="wrap_content"
             android:layout_weight="1"
+            android:clickable="true"
+            android:focusable="true"
+            android:foreground="?attr/selectableItemBackground"
             android:gravity="center"
             android:orientation="vertical">
 

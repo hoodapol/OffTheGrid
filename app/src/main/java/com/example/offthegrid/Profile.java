@@ -51,6 +51,11 @@ public final class Profile {
         return id;
     }
 
+    public static void adoptId(Context context, String id) {
+        if (id == null || !id.matches("[0-9a-fA-F-]{36}")) return;
+        prefs(context).edit().putString(KEY_ID, id).apply();
+    }
+
     public static void save(Context context, String name) {
         getId(context);
         prefs(context).edit().putString(KEY_NAME, name).apply();

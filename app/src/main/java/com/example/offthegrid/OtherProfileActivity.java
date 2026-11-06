@@ -1,6 +1,7 @@
 package com.example.offthegrid;
 
 import android.content.Context;
+import android.content.Intent;
 import android.graphics.Color;
 import android.graphics.drawable.ColorDrawable;
 import android.os.Bundle;
@@ -40,6 +41,7 @@ public class OtherProfileActivity extends AppCompatActivity implements FriendSto
     private String device;
     private int state = FriendStore.STATE_NONE;
     private boolean busy;
+    private boolean cachedView;
     private final ExecutorService worker = Executors.newSingleThreadExecutor();
 
     @Override
@@ -71,12 +73,21 @@ public class OtherProfileActivity extends AppCompatActivity implements FriendSto
 
         binding.btnOtherBack.setOnClickListener(v -> finish());
         binding.btnRetry.setOnClickListener(v -> load());
+        binding.btnOtherRefresh.setOnClickListener(v -> load());
         header.btnFriend.setOnClickListener(v -> onFriendClicked());
         header.btnDecline.setOnClickListener(v -> decline());
+        header.btnMessage.setOnClickListener(v -> openChat());
         refreshFriendButton();
 
         FriendStore.addListener(this);
         load();
+    }
+
+    private void openChat() {
+        Intent intent = new Intent(this, ChatActivity.class);
+        intent.putExtra(ChatActivity.EXTRA_PEER_NAME, peer);
+        intent.addFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP | Intent.FLAG_ACTIVITY_SINGLE_TOP);
+        startActivity(intent);
     }
 
     private void resolve() {
@@ -259,6 +270,7 @@ public class OtherProfileActivity extends AppCompatActivity implements FriendSto
 
     private void showProfile(Result result) {
         RemoteProfile profile = result.profile;
+        cachedView = result.cached;
         header.tvOtherName.setText(profile.name);
         header.tvOtherBio.setText(profile.bio);
         header.tvOtherBio.setVisibility(profile.bio.isEmpty() ? View.GONE : View.VISIBLE);
@@ -292,12 +304,53 @@ public class OtherProfileActivity extends AppCompatActivity implements FriendSto
         binding.rvOther.setVisibility(View.VISIBLE);
     }
 
+    private boolean canHeart(RemoteProfile.RemotePost post) {
+        return state == FriendStore.STATE_FRIEND && !cachedView
+                && post.id != null && !post.id.isEmpty();
+    }
+
+    private void bindHeart(DialogPostBinding card, RemoteProfile.RemotePost post) {
+        if (!post.liked) {
+            card.btnDialogDelete.setText(R.string.heart_off);
+        } else if (post.hearts > 1) {
+            card.btnDialogDelete.setText(getString(R.string.heart_on, post.hearts));
+        } else {
+            card.btnDialogDelete.setText("❤️");
+        }
+    }
+
+    private void toggleHeart(DialogPostBinding card, RemoteProfile.RemotePost post) {
+        if (!PeerRegistry.contains(peer)) {
+            toast(R.string.friend_need_nearby);
+            return;
+        }
+        boolean on = !post.liked;
+        post.liked = on;
+        post.hearts = Math.max(0, post.hearts + (on ? 1 : -1));
+        bindHeart(card, post);
+        Context app = getApplicationContext();
+        String key = peer;
+        worker.execute(() -> {
+            boolean ok = PeerClient.sendReaction(app, key, post.id,
+                    on ? MessageMetaStore.HEART : "", "post");
+            if (!ok) {
+                runOnUiThread(() -> {
+                    post.liked = !on;
+                    post.hearts = Math.max(0, post.hearts + (on ? -1 : 1));
+                    bindHeart(card, post);
+                    toast(R.string.heart_failed);
+                });
+            }
+        });
+    }
+
     private void showPost(RemoteProfile.RemotePost post) {
         Date date = new Date(post.timestamp);
         String when = DateFormat.getMediumDateFormat(this).format(date) + "  "
                 + DateFormat.getTimeFormat(this).format(date);
 
         DialogPostBinding card = DialogPostBinding.inflate(LayoutInflater.from(this));
+        card.btnDialogEdit.setVisibility(View.GONE);
         if (post.image != null) {
             card.ivDialogImage.setImageBitmap(post.image);
             card.ivDialogImage.setVisibility(View.VISIBLE);
@@ -308,7 +361,13 @@ public class OtherProfileActivity extends AppCompatActivity implements FriendSto
             card.tvDialogNote.setVisibility(View.VISIBLE);
         }
         card.tvDialogDate.setText(when);
-        card.btnDialogDelete.setVisibility(View.GONE);
+        if (canHeart(post)) {
+            card.btnDialogDelete.setVisibility(View.VISIBLE);
+            bindHeart(card, post);
+            card.btnDialogDelete.setOnClickListener(v -> toggleHeart(card, post));
+        } else {
+            card.btnDialogDelete.setVisibility(View.GONE);
+        }
 
         AlertDialog dialog = new AlertDialog.Builder(this)
                 .setView(card.getRoot())

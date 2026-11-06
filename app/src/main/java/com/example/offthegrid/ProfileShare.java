@@ -20,6 +20,10 @@ public final class ProfileShare {
     }
 
     public static String build(Context context, boolean includeFriendsOnly) {
+        return build(context, includeFriendsOnly, null);
+    }
+
+    public static String build(Context context, boolean includeFriendsOnly, String requester) {
         try {
             JSONObject json = new JSONObject();
             json.put("type", Wire.PROFILE);
@@ -41,6 +45,9 @@ public final class ProfileShare {
                 item.put("text", post.text);
                 item.put("time", post.timestamp);
                 item.put("visibility", post.visibility);
+                item.put("hearts", MessageMetaStore.heartCount(context, post.uid));
+                item.put("liked", requester != null
+                        && MessageMetaStore.isHeartedBy(context, post.uid, requester));
                 item.put("image", post.hasImage()
                         ? ImageStore.readScaledBase64(context, post.image, POST_SIDE, POST_BYTES)
                         : "");
