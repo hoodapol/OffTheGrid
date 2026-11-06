@@ -17,6 +17,11 @@
         <item name="android:statusBarColor">@color/otg_bar_dark</item>
         <item name="android:fontFamily">@font/poppins</item>
         <item name="fontFamily">@font/poppins</item>
+        <item name="alertDialogTheme">@style/OffTheGrid.AlertDialog</item>
+        <item name="popupMenuStyle">@style/Widget.OffTheGrid.PopupMenu</item>
+        <item name="actionOverflowMenuStyle">@style/Widget.OffTheGrid.OverflowMenu</item>
+        <item name="textAppearanceLargePopupMenu">@style/TextAppearance.OffTheGrid.Popup</item>
+        <item name="textAppearanceSmallPopupMenu">@style/TextAppearance.OffTheGrid.Popup</item>
     </style>
 
     <style name="RoundedLogo" parent="">

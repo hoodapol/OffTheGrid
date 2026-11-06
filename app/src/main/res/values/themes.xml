@@ -17,6 +17,65 @@
         <item name="android:statusBarColor">@color/otg_bar_dark</item>
         <item name="android:fontFamily">@font/poppins</item>
         <item name="fontFamily">@font/poppins</item>
+        <item name="alertDialogTheme">@style/OffTheGrid.AlertDialog</item>
+        <item name="popupMenuStyle">@style/Widget.OffTheGrid.PopupMenu</item>
+        <item name="actionOverflowMenuStyle">@style/Widget.OffTheGrid.OverflowMenu</item>
+        <item name="textAppearanceLargePopupMenu">@style/TextAppearance.OffTheGrid.Popup</item>
+        <item name="textAppearanceSmallPopupMenu">@style/TextAppearance.OffTheGrid.Popup</item>
+    </style>
+
+    <style name="OffTheGrid.AlertDialog" parent="Theme.MaterialComponents.DayNight.Dialog.Alert">
+        <item name="colorPrimary">@color/otg_primary</item>
+        <item name="colorOnPrimary">@color/otg_on_primary</item>
+        <item name="colorSecondary">@color/otg_accent</item>
+        <item name="colorSurface">@color/otg_surface</item>
+        <item name="colorOnSurface">@color/otg_text_primary</item>
+        <item name="colorControlNormal">@color/otg_text_secondary</item>
+        <item name="colorControlActivated">@color/otg_primary</item>
+        <item name="android:colorBackground">@color/otg_surface</item>
+        <item name="android:colorBackgroundFloating">@color/otg_surface</item>
+        <item name="android:windowBackground">@drawable/bg_dialog</item>
+        <item name="android:textColorPrimary">@color/otg_text_primary</item>
+        <item name="android:textColorSecondary">@color/otg_text_secondary</item>
+        <item name="android:textColorHint">@color/otg_text_secondary</item>
+        <item name="android:textColorAlertDialogListItem">@color/otg_text_primary</item>
+        <item name="android:windowTitleStyle">@style/OffTheGrid.DialogTitle</item>
+        <item name="buttonBarPositiveButtonStyle">@style/OffTheGrid.DialogButton</item>
+        <item name="buttonBarNegativeButtonStyle">@style/OffTheGrid.DialogButton.Quiet</item>
+        <item name="buttonBarNeutralButtonStyle">@style/OffTheGrid.DialogButton.Quiet</item>
+        <item name="android:fontFamily">@font/poppins</item>
+        <item name="fontFamily">@font/poppins</item>
+    </style>
+
+    <style name="OffTheGrid.DialogTitle" parent="TextAppearance.AppCompat.Title">
+        <item name="android:textColor">@color/otg_text_primary</item>
+        <item name="android:textSize">20sp</item>
+        <item name="android:textStyle">bold</item>
+    </style>
+
+    <style name="OffTheGrid.DialogButton" parent="Widget.MaterialComponents.Button.TextButton.Dialog">
+        <item name="android:textColor">@color/otg_primary</item>
+        <item name="android:textSize">15sp</item>
+        <item name="android:textStyle">bold</item>
+        <item name="android:textAllCaps">false</item>
+        <item name="textAllCaps">false</item>
+    </style>
+
+    <style name="OffTheGrid.DialogButton.Quiet">
+        <item name="android:textColor">@color/otg_text_secondary</item>
+    </style>
+
+    <style name="Widget.OffTheGrid.PopupMenu" parent="Widget.MaterialComponents.PopupMenu">
+        <item name="android:popupBackground">@drawable/bg_popup</item>
+    </style>
+
+    <style name="Widget.OffTheGrid.OverflowMenu" parent="Widget.MaterialComponents.PopupMenu.Overflow">
+        <item name="android:popupBackground">@drawable/bg_popup</item>
+    </style>
+
+    <style name="TextAppearance.OffTheGrid.Popup" parent="TextAppearance.AppCompat.Widget.PopupMenu.Large">
+        <item name="android:textColor">@color/otg_text_primary</item>
+        <item name="android:textSize">15sp</item>
     </style>
 
     <style name="RoundedLogo" parent="">
