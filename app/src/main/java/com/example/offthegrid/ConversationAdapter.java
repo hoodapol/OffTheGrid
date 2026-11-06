@@ -2,6 +2,7 @@ package com.example.offthegrid;
 
 import android.content.Context;
 import android.graphics.Bitmap;
+import android.graphics.Typeface;
 import android.text.format.DateFormat;
 import android.text.format.DateUtils;
 import android.view.LayoutInflater;
@@ -11,7 +12,10 @@ import android.widget.ImageView;
 import android.widget.TextView;
 
 import androidx.annotation.NonNull;
+import androidx.core.content.ContextCompat;
 import androidx.recyclerview.widget.RecyclerView;
+
+import com.google.android.material.color.MaterialColors;
 
 import java.util.ArrayList;
 import java.util.Date;
@@ -124,6 +128,7 @@ public class ConversationAdapter extends RecyclerView.Adapter<RecyclerView.ViewH
     private void bindChat(ChatHolder holder, Conversation item) {
         Context context = holder.itemView.getContext();
         holder.name.setText(item.peer);
+        boolean unread = item.unread > 0;
         if (item.lastTimestamp == 0) {
             holder.preview.setText(R.string.friend_say_hi);
             holder.time.setText("");
@@ -133,6 +138,20 @@ public class ConversationAdapter extends RecyclerView.Adapter<RecyclerView.ViewH
                     : item.lastText);
             holder.time.setText(formatTime(context, item.lastTimestamp));
         }
+        holder.preview.setTypeface(null, unread ? Typeface.BOLD : Typeface.NORMAL);
+        holder.preview.setTextColor(ContextCompat.getColor(context,
+                unread ? R.color.otg_text_primary : R.color.otg_text_secondary));
+        if (unread) {
+            holder.unread.setText(item.unread > 99 ? "99+" : String.valueOf(item.unread));
+            holder.unread.setVisibility(View.VISIBLE);
+        } else {
+            holder.unread.setVisibility(View.GONE);
+        }
+        String flags = (item.pinned ? "📌" : "") + (item.muted ? " 🔕" : "");
+        holder.flags.setText(flags.trim());
+        holder.flags.setVisibility(flags.isEmpty() ? View.GONE : View.VISIBLE);
+        bindStatus(holder, context, item);
+
         Bitmap bitmap = avatarFor(context, item.peer);
         if (bitmap != null) {
             holder.avatarImage.setImageBitmap(bitmap);
@@ -154,6 +173,24 @@ public class ConversationAdapter extends RecyclerView.Adapter<RecyclerView.ViewH
                 notifyItemChanged(index);
             }
         });
+    }
+
+    private void bindStatus(ChatHolder holder, Context context, Conversation item) {
+        if (item.online) {
+            holder.status.setText(R.string.status_nearby);
+            holder.status.setTextColor(
+                    MaterialColors.getColor(holder.itemView, androidx.appcompat.R.attr.colorPrimary));
+        } else {
+            holder.status.setTextColor(
+                    ContextCompat.getColor(context, R.color.otg_text_secondary));
+            if (item.lastSeen > 0) {
+                CharSequence ago = DateUtils.getRelativeTimeSpanString(
+                        item.lastSeen, System.currentTimeMillis(), DateUtils.MINUTE_IN_MILLIS);
+                holder.status.setText(context.getString(R.string.status_last_seen, ago));
+            } else {
+                holder.status.setText(R.string.status_not_nearby);
+            }
+        }
     }
 
     private Bitmap avatarFor(Context context, String peer) {
@@ -210,16 +247,22 @@ public class ConversationAdapter extends RecyclerView.Adapter<RecyclerView.ViewH
         final TextView avatar;
         final ImageView avatarImage;
         final TextView name;
+        final TextView flags;
         final TextView preview;
+        final TextView status;
         final TextView time;
+        final TextView unread;
 
         ChatHolder(View itemView) {
             super(itemView);
             avatar = itemView.findViewById(R.id.tvConversationAvatar);
             avatarImage = itemView.findViewById(R.id.ivConversationAvatar);
             name = itemView.findViewById(R.id.tvConversationName);
+            flags = itemView.findViewById(R.id.tvConversationFlags);
             preview = itemView.findViewById(R.id.tvConversationPreview);
+            status = itemView.findViewById(R.id.tvConversationStatus);
             time = itemView.findViewById(R.id.tvConversationTime);
+            unread = itemView.findViewById(R.id.tvConversationUnread);
         }
     }
 }

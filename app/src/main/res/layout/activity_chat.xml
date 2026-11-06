@@ -45,6 +45,18 @@
                 android:textColor="@color/otg_text_primary"
                 android:textSize="18sp"
                 android:textStyle="bold" />
+
+            <TextView
+                android:id="@+id/tvChatSubtitle"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="2dp"
+                android:ellipsize="end"
+                android:maxLines="1"
+                android:text="@string/chat_typing_short"
+                android:textColor="@color/otg_primary"
+                android:textSize="12sp"
+                android:visibility="gone" />
         </LinearLayout>
 
         <com.example.offthegrid.StatusView

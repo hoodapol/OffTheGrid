@@ -1,17 +1,28 @@
 package com.example.offthegrid;
 
+import android.Manifest;
 import android.content.BroadcastReceiver;
+import android.content.ClipData;
+import android.content.ClipboardManager;
 import android.content.Context;
 import android.content.Intent;
 import android.content.IntentFilter;
+import android.content.pm.PackageManager;
 import android.database.Cursor;
 import android.net.Uri;
+import android.os.Build;
 import android.os.Bundle;
 import android.os.Handler;
 import android.os.Looper;
+import android.text.Editable;
+import android.text.InputType;
+import android.text.TextWatcher;
 import android.util.Log;
 import android.view.Menu;
 import android.view.MenuItem;
+import android.view.View;
+import android.view.WindowManager;
+import android.widget.EditText;
 import android.widget.Toast;
 
 import androidx.activity.result.ActivityResultLauncher;
@@ -25,6 +36,8 @@ import com.example.offthegrid.databinding.ActivityChatBinding;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
+import java.util.Set;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 
@@ -32,15 +45,57 @@ public class ChatActivity extends AppCompatActivity {
     private static final String TAG = "ChatActivity";
     public static final String EXTRA_PEER_NAME = "peer_name";
     private static final long PING_INTERVAL_MS = 5000;
+    private static final long TYPING_RESEND_MS = 2500;
+    private static final long TYPING_IDLE_MS = 4000;
+    private static final int QUOTE_LIMIT = 80;
 
     public static volatile String visiblePeer = null;
     private ActivityChatBinding binding;
     private MessageAdapter adapter;
     private String peerName;
+    private String pendingSave;
     private int pingGeneration;
+    private boolean typingActive;
+    private long lastTypingSent;
     private final ExecutorService pinger = Executors.newSingleThreadExecutor();
     private final ExecutorService imageWorker = Executors.newSingleThreadExecutor();
+    private final ExecutorService typingWorker = Executors.newSingleThreadExecutor();
+    private final ExecutorService reactWorker = Executors.newSingleThreadExecutor();
     private final Handler main = new Handler(Looper.getMainLooper());
+
+    private final Runnable stopTyping = this::stopTypingNow;
+
+    private final TextWatcher typingWatcher = new TextWatcher() {
+        @Override
+        public void beforeTextChanged(CharSequence s, int start, int count, int after) {
+        }
+
+        @Override
+        public void onTextChanged(CharSequence s, int start, int before, int count) {
+        }
+
+        @Override
+        public void afterTextChanged(Editable s) {
+            main.removeCallbacks(stopTyping);
+            if (s.toString().trim().isEmpty()) {
+                stopTypingNow();
+                return;
+            }
+            long now = System.currentTimeMillis();
+            if (!typingActive || now - lastTypingSent > TYPING_RESEND_MS) {
+                typingActive = true;
+                lastTypingSent = now;
+                sendTyping(true);
+            }
+            main.postDelayed(stopTyping, TYPING_IDLE_MS);
+        }
+    };
+
+    private final TypingTracker.Listener typingListener = peer -> {
+        if (peerName != null && peerName.equals(peer)) {
+            refreshTitle();
+        }
+    };
 
     private final ActivityResultLauncher<Intent> picker = registerForActivityResult(
             new ActivityResultContracts.StartActivityForResult(),
@@ -48,6 +103,18 @@ public class ChatActivity extends AppCompatActivity {
                 Intent data = result.getData();
                 if (result.getResultCode() == RESULT_OK && data != null) {
                     onPhotoPicked(data.getData());
+                }
+            });
+
+    private final ActivityResultLauncher<String> storagePermission = registerForActivityResult(
+            new ActivityResultContracts.RequestPermission(), granted -> {
+                String image = pendingSave;
+                pendingSave = null;
+                if (granted && image != null) {
+                    saveToGallery(image);
+                } else {
+                    Toast.makeText(this, R.string.storage_permission_denied,
+                            Toast.LENGTH_LONG).show();
                 }
             });
 
@@ -79,7 +146,17 @@ public class ChatActivity extends AppCompatActivity {
             getSupportActionBar().setDisplayHomeAsUpEnabled(true);
         }
 
-        adapter = new MessageAdapter(this::confirmDeleteMessage);
+        adapter = new MessageAdapter(new MessageAdapter.OnMessageActionListener() {
+            @Override
+            public void onMessageLongClick(Message message) {
+                showMessageActions(message);
+            }
+
+            @Override
+            public void onMessageHeart(Message message) {
+                toggleHeart(message);
+            }
+        });
         LinearLayoutManager layoutManager = new LinearLayoutManager(this);
         layoutManager.setStackFromEnd(true);
         binding.rvMessages.setLayoutManager(layoutManager);
@@ -88,6 +165,27 @@ public class ChatActivity extends AppCompatActivity {
         binding.btnSend.setOnClickListener(v -> sendMessage());
         binding.btnAttach.setOnClickListener(v -> pickPhoto());
         binding.chatHeader.setOnClickListener(v -> openProfile());
+        binding.etMessage.addTextChangedListener(typingWatcher);
+    }
+
+    private void refreshTitle() {
+        binding.tvChatWith.setText(peerName);
+        boolean typing = TypingTracker.isTyping(peerName);
+        binding.tvChatSubtitle.setVisibility(typing ? View.VISIBLE : View.GONE);
+    }
+
+    private void sendTyping(boolean typing) {
+        Context app = getApplicationContext();
+        String peer = peerName;
+        typingWorker.execute(() -> PeerClient.sendTyping(app, peer, typing));
+    }
+
+    private void stopTypingNow() {
+        main.removeCallbacks(stopTyping);
+        if (typingActive) {
+            typingActive = false;
+            sendTyping(false);
+        }
     }
 
     private void openProfile() {
@@ -154,6 +252,9 @@ public class ChatActivity extends AppCompatActivity {
 
     private void loadMessages() {
         List<Message> list = new ArrayList<>();
+        Map<String, MessageMetaStore.Reply> replies = MessageMetaStore.loadReplies(this);
+        Map<String, Set<String>> hearts = MessageMetaStore.loadHearts(this);
+        String myId = Profile.getId(this);
         try (Cursor cursor = getContentResolver().query(
                 MessageStorage.CONTENT_URI,
                 null,
@@ -167,54 +268,175 @@ public class ChatActivity extends AppCompatActivity {
                 int textIndex = cursor.getColumnIndexOrThrow(MessageStorage.COL_TEXT);
                 int statusIndex = cursor.getColumnIndexOrThrow(MessageStorage.COL_STATUS);
                 int imageIndex = cursor.getColumnIndexOrThrow(MessageStorage.COL_IMAGE);
+                int timeIndex = cursor.getColumnIndexOrThrow(MessageStorage.COL_TIMESTAMP);
                 while (cursor.moveToNext()) {
                     boolean sent = MessageStorage.ME.equals(cursor.getString(senderIndex));
-                    list.add(new Message(cursor.getLong(idIndex), cursor.getString(uidIndex),
+                    String uid = cursor.getString(uidIndex);
+                    MessageMetaStore.Reply reply = uid == null ? null : replies.get(uid);
+                    Set<String> people = uid == null ? null : hearts.get(uid);
+                    boolean mine = people != null && people.contains(myId);
+                    boolean theirs = false;
+                    if (people != null) {
+                        for (String who : people) {
+                            if (!who.equals(myId)) {
+                                theirs = true;
+                                break;
+                            }
+                        }
+                    }
+                    list.add(new Message(cursor.getLong(idIndex), uid,
                             cursor.getString(textIndex), sent, cursor.getInt(statusIndex),
-                            cursor.getString(imageIndex)));
+                            cursor.getString(imageIndex), reply == null ? null : reply.quote,
+                            mine, theirs, cursor.getLong(timeIndex)));
                 }
             }
         }
         adapter.setMessages(list);
         binding.rvMessages.scrollToPosition(adapter.getItemCount() - 1);
+        ChatStateStore.markRead(this, peerName);
     }
 
     private void sendMessage() {
         String text = binding.etMessage.getText().toString().trim();
         if (text.isEmpty()) return;
+        startSend(text, null, null);
+        binding.etMessage.setText("");
+        stopTypingNow();
+    }
+
+    private void startSend(String text, String replyId, String quote) {
         Intent intent = new Intent(this, OffTheGridService.class);
         intent.setAction(OffTheGridService.ACTION_SEND);
         intent.putExtra(OffTheGridService.EXTRA_PEER, peerName);
         intent.putExtra(OffTheGridService.EXTRA_TEXT, text);
+        if (replyId != null) {
+            intent.putExtra(OffTheGridService.EXTRA_REPLY_ID, replyId);
+            intent.putExtra(OffTheGridService.EXTRA_REPLY_QUOTE, quote);
+        }
         startService(intent);
-        binding.etMessage.setText("");
     }
 
-    private void confirmDeleteMessage(Message message) {
-        if (message.isSent() && message.getUid() != null) {
-            CharSequence[] choices = {
-                    getString(R.string.delete_for_me),
-                    getString(R.string.delete_for_everyone)
-            };
-            new AlertDialog.Builder(this)
-                    .setTitle(R.string.delete_message_title)
-                    .setItems(choices, (dialog, which) -> {
-                        if (which == 0) {
-                            deleteForMe(message);
-                        } else {
-                            unsend(message);
-                        }
-                    })
-                    .setNegativeButton(R.string.cancel, null)
-                    .show();
-        } else {
-            new AlertDialog.Builder(this)
-                    .setTitle(R.string.delete_message_title)
-                    .setMessage(R.string.delete_message_body)
-                    .setPositiveButton(R.string.delete, (dialog, which) -> deleteForMe(message))
-                    .setNegativeButton(R.string.cancel, null)
-                    .show();
+    private void toggleHeart(Message message) {
+        if (!message.canHeart()) return;
+        Context app = getApplicationContext();
+        String myId = Profile.getId(app);
+        String uid = message.getUid();
+        String peer = peerName;
+        boolean on = !message.isHeartedByMe();
+        MessageMetaStore.setHeart(app, uid, myId, on);
+        loadMessages();
+        reactWorker.execute(() -> {
+            boolean ok = PeerClient.sendReaction(app, peer, uid,
+                    on ? MessageMetaStore.HEART : "", "msg");
+            if (!ok) {
+                main.post(() -> {
+                    MessageMetaStore.setHeart(app, uid, myId, !on);
+                    if (!isFinishing() && !isDestroyed()) {
+                        loadMessages();
+                    }
+                    Toast.makeText(app, R.string.heart_failed, Toast.LENGTH_SHORT).show();
+                });
+            }
+        });
+    }
+
+    private String quoteOf(Message message) {
+        if (message.hasImage()) return getString(R.string.photo_preview);
+        String text = message.getText() == null ? "" : message.getText().trim();
+        return text.length() > QUOTE_LIMIT ? text.substring(0, QUOTE_LIMIT) + "…" : text;
+    }
+
+    private void showReplyDialog(Message message) {
+        String quote = quoteOf(message);
+        EditText input = new EditText(this);
+        input.setHint(R.string.reply_hint);
+        input.setInputType(InputType.TYPE_CLASS_TEXT
+                | InputType.TYPE_TEXT_FLAG_CAP_SENTENCES
+                | InputType.TYPE_TEXT_FLAG_MULTI_LINE);
+        input.setMaxLines(4);
+        AlertDialog dialog = new AlertDialog.Builder(this)
+                .setTitle(R.string.reply_title)
+                .setMessage("↩ " + quote)
+                .setPositiveButton(R.string.send, (d, which) -> {
+                    String text = input.getText().toString().trim();
+                    if (!text.isEmpty()) {
+                        startSend(text, message.getUid(), quote);
+                    }
+                })
+                .setNegativeButton(R.string.cancel, null)
+                .create();
+        int pad = (int) (24 * getResources().getDisplayMetrics().density);
+        dialog.setView(input, pad, pad / 2, pad, 0);
+        dialog.getWindow().setSoftInputMode(WindowManager.LayoutParams.SOFT_INPUT_STATE_VISIBLE);
+        dialog.show();
+        input.requestFocus();
+    }
+
+    private void copyText(String text) {
+        ClipboardManager clipboard =
+                (ClipboardManager) getSystemService(Context.CLIPBOARD_SERVICE);
+        if (clipboard == null) return;
+        clipboard.setPrimaryClip(ClipData.newPlainText(getString(R.string.app_name), text));
+        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.TIRAMISU) {
+            Toast.makeText(this, R.string.chat_copy_done, Toast.LENGTH_SHORT).show();
         }
+    }
+
+    private void showMessageActions(Message message) {
+        List<CharSequence> labels = new ArrayList<>();
+        List<Runnable> actions = new ArrayList<>();
+        if (message.getUid() != null) {
+            labels.add(getString(R.string.reply_action));
+            actions.add(() -> showReplyDialog(message));
+        }
+        String text = message.getText();
+        if (!message.hasImage() && text != null && !text.trim().isEmpty()) {
+            labels.add(getString(R.string.chat_copy_action));
+            actions.add(() -> copyText(text));
+        }
+        if (message.canHeart()) {
+            labels.add(getString(message.isHeartedByMe()
+                    ? R.string.action_unheart : R.string.action_heart));
+            actions.add(() -> toggleHeart(message));
+        }
+        if (message.hasImage()) {
+            labels.add(getString(R.string.save_to_gallery));
+            actions.add(() -> requestSave(message.getImage()));
+        }
+        labels.add(getString(R.string.delete_for_me));
+        actions.add(() -> deleteForMe(message));
+        if (message.isSent() && message.getUid() != null) {
+            labels.add(getString(R.string.delete_for_everyone));
+            actions.add(() -> unsend(message));
+        }
+        new AlertDialog.Builder(this)
+                .setTitle(R.string.message_actions_title)
+                .setItems(labels.toArray(new CharSequence[0]),
+                        (dialog, which) -> actions.get(which).run())
+                .setNegativeButton(R.string.cancel, null)
+                .show();
+    }
+
+    private void requestSave(String image) {
+        boolean needsPermission = Build.VERSION.SDK_INT < Build.VERSION_CODES.Q
+                && ContextCompat.checkSelfPermission(this,
+                Manifest.permission.WRITE_EXTERNAL_STORAGE) != PackageManager.PERMISSION_GRANTED;
+        if (needsPermission) {
+            pendingSave = image;
+            storagePermission.launch(Manifest.permission.WRITE_EXTERNAL_STORAGE);
+        } else {
+            saveToGallery(image);
+        }
+    }
+
+    private void saveToGallery(String image) {
+        Context app = getApplicationContext();
+        imageWorker.execute(() -> {
+            boolean ok = GallerySaver.save(app, image);
+            main.post(() -> Toast.makeText(app,
+                    ok ? R.string.photo_saved : R.string.photo_save_failed,
+                    Toast.LENGTH_SHORT).show());
+        });
     }
 
     private void deleteForMe(Message message) {
@@ -270,6 +492,8 @@ public class ChatActivity extends AppCompatActivity {
         Log.d(TAG, "onStart");
         IntentFilter filter = new IntentFilter(OffTheGridService.EVENT_MESSAGE_SAVED);
         ContextCompat.registerReceiver(this, receiver, filter, ContextCompat.RECEIVER_NOT_EXPORTED);
+        TypingTracker.addListener(typingListener);
+        refreshTitle();
         loadMessages();
         pingGeneration++;
         pingLoop(pingGeneration);
@@ -279,6 +503,7 @@ public class ChatActivity extends AppCompatActivity {
     protected void onResume() {
         super.onResume();
         visiblePeer = peerName;
+        ChatStateStore.markRead(this, peerName);
         Log.d(TAG, "onResume");
     }
 
@@ -292,6 +517,8 @@ public class ChatActivity extends AppCompatActivity {
     @Override
     protected void onStop() {
         Log.d(TAG, "onStop");
+        stopTypingNow();
+        TypingTracker.removeListener(typingListener);
         pingGeneration++;
         main.removeCallbacksAndMessages(null);
         unregisterReceiver(receiver);
@@ -309,6 +536,8 @@ public class ChatActivity extends AppCompatActivity {
         Log.d(TAG, "onDestroy");
         pinger.shutdownNow();
         imageWorker.shutdownNow();
+        typingWorker.shutdown();
+        reactWorker.shutdown();
         super.onDestroy();
     }
 }
