@@ -158,7 +158,11 @@ public final class MessageSink {
 
     @SuppressLint("MissingPermission")
     private static void notifyIncoming(Context context, String peer, String body) {
-        if (peer.equals(ChatActivity.visiblePeer)) return;
+        if (peer.equals(ChatActivity.visiblePeer)) {
+            ChatStateStore.markRead(context, peer);
+            return;
+        }
+        if (ChatStateStore.isMuted(context, peer)) return;
         if (Build.VERSION.SDK_INT >= 33
                 && ContextCompat.checkSelfPermission(context, Manifest.permission.POST_NOTIFICATIONS)
                 != PackageManager.PERMISSION_GRANTED) {

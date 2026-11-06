@@ -3,8 +3,11 @@ package com.example.offthegrid;
 import android.Manifest;
 import android.content.Intent;
 import android.content.pm.PackageManager;
+import android.database.ContentObserver;
 import android.os.Build;
 import android.os.Bundle;
+import android.os.Handler;
+import android.os.Looper;
 import android.util.Log;
 import android.widget.Toast;
 
@@ -15,6 +18,7 @@ import androidx.core.content.ContextCompat;
 import androidx.fragment.app.Fragment;
 
 import com.example.offthegrid.databinding.ActivityDiscoverBinding;
+import com.google.android.material.badge.BadgeDrawable;
 
 public class DiscoverActivity extends AppCompatActivity {
 
@@ -22,12 +26,19 @@ public class DiscoverActivity extends AppCompatActivity {
 
     private ActivityDiscoverBinding binding;
 
+    private final ContentObserver observer = new ContentObserver(new Handler(Looper.getMainLooper())) {
+        @Override
+        public void onChange(boolean selfChange) {
+            updateBadge();
+        }
+    };
+
+    private final ChatStateStore.Listener stateListener = this::updateBadge;
+
     private final ActivityResultLauncher<String> notificationPermission =
             registerForActivityResult(new ActivityResultContracts.RequestPermission(), granted -> {
                 if (!granted) {
-                    Toast.makeText(this,
-                            "Notifications are off, so you will not be alerted to new messages",
-                            Toast.LENGTH_LONG).show();
+                    Toast.makeText(this, R.string.notifications_off, Toast.LENGTH_LONG).show();
                 }
             });
 
@@ -52,6 +63,7 @@ public class DiscoverActivity extends AppCompatActivity {
 
         binding = ActivityDiscoverBinding.inflate(getLayoutInflater());
         setContentView(binding.getRoot());
+        ChatStateStore.startTracking(this);
 
         binding.bottomNav.setOnItemSelectedListener(item -> {
             int id = item.getItemId();
@@ -73,10 +85,8 @@ public class DiscoverActivity extends AppCompatActivity {
         });
 
         if (savedInstanceState == null) {
-            showTab(new DiscoverFragment());
-            binding.bottomNav.getMenu().findItem(R.id.nav_discover).setChecked(true);
+            binding.bottomNav.setSelectedItemId(R.id.nav_discover);
         }
-        startService(new Intent(this, ListenerService.class));
         askForNotificationPermission();
     }
 
@@ -87,10 +97,28 @@ public class DiscoverActivity extends AppCompatActivity {
                 .commit();
     }
 
+    private void updateBadge() {
+        if (binding == null) return;
+        int total = ChatStateStore.totalUnread(this);
+        BadgeDrawable badge = binding.bottomNav.getOrCreateBadge(R.id.nav_chats);
+        if (total > 0) {
+            badge.setNumber(total);
+            badge.setVisible(true);
+        } else {
+            badge.clearNumber();
+            badge.setVisible(false);
+        }
+    }
+
     @Override
     protected void onStart() {
         super.onStart();
         Log.d(TAG, "onStart");
+        if (binding == null) return;
+        ListenerService.start(this);
+        getContentResolver().registerContentObserver(MessageStorage.CONTENT_URI, true, observer);
+        ChatStateStore.addListener(stateListener);
+        updateBadge();
     }
 
     @Override
@@ -108,6 +136,10 @@ public class DiscoverActivity extends AppCompatActivity {
     @Override
     protected void onStop() {
         Log.d(TAG, "onStop");
+        if (binding != null) {
+            getContentResolver().unregisterContentObserver(observer);
+            ChatStateStore.removeListener(stateListener);
+        }
         super.onStop();
     }
 
@@ -120,7 +152,7 @@ public class DiscoverActivity extends AppCompatActivity {
     @Override
     protected void onDestroy() {
         Log.d(TAG, "onDestroy");
-        if (isFinishing()) {
+        if (isFinishing() && !VisibilityPrefs.isStayVisible(this)) {
             stopService(new Intent(this, ListenerService.class));
         }
         super.onDestroy();

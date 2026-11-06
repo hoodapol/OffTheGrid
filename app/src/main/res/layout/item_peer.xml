@@ -1,15 +1,13 @@
 <?xml version="1.0" encoding="utf-8"?>
 <LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
     android:layout_width="match_parent"
     android:layout_height="wrap_content"
-    android:layout_marginStart="20dp"
+    android:layout_marginStart="16dp"
     android:layout_marginTop="6dp"
-    android:layout_marginEnd="20dp"
+    android:layout_marginEnd="16dp"
     android:layout_marginBottom="6dp"
     android:background="@drawable/bg_card"
-    android:clickable="true"
-    android:focusable="true"
-    android:foreground="?attr/selectableItemBackground"
     android:gravity="center_vertical"
     android:minHeight="80dp"
     android:orientation="horizontal"
@@ -18,14 +16,35 @@
     android:paddingEnd="16dp"
     android:paddingBottom="12dp">
 
-    <ImageView
-        android:layout_width="56dp"
-        android:layout_height="56dp"
+    <FrameLayout
+        android:id="@+id/avatarArea"
+        android:layout_width="58dp"
+        android:layout_height="58dp"
         android:background="@drawable/bg_avatar_ring"
-        android:contentDescription="@string/peer_avatar_description"
-        android:padding="15dp"
-        android:src="@drawable/ic_nav_profile"
-        android:tint="@color/otg_on_primary" />
+        android:clickable="true"
+        android:contentDescription="@string/peer_card_avatar_description"
+        android:focusable="true"
+        android:padding="4dp">
+
+        <TextView
+            android:id="@+id/tvPeerInitial"
+            android:layout_width="match_parent"
+            android:layout_height="match_parent"
+            android:background="@drawable/bg_avatar"
+            android:gravity="center"
+            android:textColor="@color/otg_on_primary"
+            android:textSize="20sp"
+            android:textStyle="bold" />
+
+        <com.google.android.material.imageview.ShapeableImageView
+            android:id="@+id/ivPeerAvatar"
+            android:layout_width="match_parent"
+            android:layout_height="match_parent"
+            android:importantForAccessibility="no"
+            android:scaleType="centerCrop"
+            android:visibility="gone"
+            app:shapeAppearanceOverlay="@style/CircleImage" />
+    </FrameLayout>
 
     <LinearLayout
         android:layout_width="0dp"
@@ -40,7 +59,6 @@
             android:layout_height="wrap_content"
             android:ellipsize="end"
             android:maxLines="1"
-            android:text="@string/peer_name_placeholder"
             android:textColor="@color/otg_text_primary"
             android:textSize="16sp"
             android:textStyle="bold" />
@@ -48,20 +66,20 @@
         <TextView
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:layout_marginTop="2dp"
-            android:text="@string/peer_status"
+            android:layout_marginTop="4dp"
+            android:text="@string/peer_card_subtitle"
             android:textColor="@color/otg_text_secondary"
-            android:textSize="13sp" />
+            android:textSize="12sp" />
     </LinearLayout>
 
     <TextView
-        android:layout_width="40dp"
-        android:layout_height="40dp"
-        android:background="@drawable/bg_avatar"
+        android:layout_width="36dp"
+        android:layout_height="36dp"
+        android:background="@drawable/bg_circle_outline"
         android:gravity="center"
         android:importantForAccessibility="no"
-        android:text="@string/open_chat"
-        android:textColor="@color/otg_on_primary"
-        android:textSize="22sp" />
+        android:text="@string/peer_card_arrow"
+        android:textColor="@color/otg_text_primary"
+        android:textSize="20sp" />
 
 </LinearLayout>

@@ -1,6 +1,10 @@
 package com.example.offthegrid;
 
+import android.content.Context;
 import android.content.Intent;
+import android.net.ConnectivityManager;
+import android.net.Network;
+import android.net.NetworkCapabilities;
 import android.os.Bundle;
 import android.os.Handler;
 import android.os.Looper;
@@ -49,11 +53,27 @@ public class DiscoverFragment extends Fragment {
         super.onStop();
     }
 
+    private boolean onWifi() {
+        Context context = getContext();
+        if (context == null) return true;
+        ConnectivityManager manager =
+                (ConnectivityManager) context.getSystemService(Context.CONNECTIVITY_SERVICE);
+        Network network = manager.getActiveNetwork();
+        if (network == null) return false;
+        NetworkCapabilities capabilities = manager.getNetworkCapabilities(network);
+        return capabilities != null
+                && (capabilities.hasTransport(NetworkCapabilities.TRANSPORT_WIFI)
+                || capabilities.hasTransport(NetworkCapabilities.TRANSPORT_ETHERNET));
+    }
+
     private void refreshPeers() {
         if (binding == null) return;
         List<String> names = PeerRegistry.names();
         adapter.setAll(names);
-        binding.tvPeersEmpty.setVisibility(names.isEmpty() ? View.VISIBLE : View.GONE);
+        boolean empty = names.isEmpty();
+        binding.tvPeersEmpty.setVisibility(empty ? View.VISIBLE : View.GONE);
+        binding.rvPeers.setVisibility(empty ? View.GONE : View.VISIBLE);
+        binding.tvNearbyWifiWarning.setVisibility(empty && !onWifi() ? View.VISIBLE : View.GONE);
     }
 
     private void openChat(String peer) {

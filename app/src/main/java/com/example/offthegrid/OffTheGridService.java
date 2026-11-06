@@ -32,6 +32,8 @@ public class OffTheGridService extends Service {
     public static final String EXTRA_UID = "uid";
     public static final String EXTRA_ROW_ID = "row_id";
     public static final String EXTRA_IMAGE = "image";
+    public static final String EXTRA_REPLY_ID = "reply_id";
+    public static final String EXTRA_REPLY_QUOTE = "reply_quote";
 
     private ExecutorService io;
 
@@ -69,19 +71,21 @@ public class OffTheGridService extends Service {
         final String text = intent.getStringExtra(EXTRA_TEXT);
         final String uid = intent.getStringExtra(EXTRA_UID);
         final String image = intent.getStringExtra(EXTRA_IMAGE);
+        final String replyId = intent.getStringExtra(EXTRA_REPLY_ID);
+        final String replyQuote = intent.getStringExtra(EXTRA_REPLY_QUOTE);
         final long rowId = intent.getLongExtra(EXTRA_ROW_ID, -1);
         io.execute(() -> {
-            handle(action, peer, text, uid, rowId, image);
+            handle(action, peer, text, uid, rowId, image, replyId, replyQuote);
             stopSelf(startId);
         });
         return START_NOT_STICKY;
     }
 
     private void handle(String action, String peer, String text, String uid, long rowId,
-                        String image) {
+                        String image, String replyId, String replyQuote) {
         if (peer == null) return;
         if (ACTION_SEND.equals(action) && text != null) {
-            send(peer, text);
+            send(peer, text, replyId, replyQuote);
         } else if (ACTION_SEND_IMAGE.equals(action) && image != null) {
             sendImage(peer, image);
         } else if (ACTION_RETRY.equals(action)) {
@@ -91,12 +95,17 @@ public class OffTheGridService extends Service {
         }
     }
 
-    private void send(String peer, String text) {
+    private void send(String peer, String text, String replyId, String replyQuote) {
         String uid = UUID.randomUUID().toString();
+        String ref = replyId == null ? "" : replyId;
+        String quote = replyQuote == null ? "" : replyQuote;
+        if (!ref.isEmpty()) {
+            MessageMetaStore.saveReply(this, uid, ref, quote);
+        }
         Uri row = MessageSink.save(this, MessageStorage.ME, peer, text,
                 MessageStorage.STATUS_PENDING, uid);
         MessageSink.broadcastSaved(this, peer);
-        if (row != null && PeerClient.sendMessage(this, peer, uid, text)) {
+        if (row != null && PeerClient.sendMessage(this, peer, uid, text, ref, quote)) {
             MessageSink.setStatus(this, ContentUris.parseId(row), MessageStorage.STATUS_DONE);
             MessageSink.broadcastSaved(this, peer);
         }
@@ -117,9 +126,15 @@ public class OffTheGridService extends Service {
         boolean changed = false;
         for (PendingMessage item : loadPending(peer)) {
             if (item.image != null && !ImageStore.file(this, item.image).exists()) continue;
-            boolean sent = item.image == null
-                    ? PeerClient.sendMessage(this, peer, item.uid, item.text)
-                    : PeerClient.sendImage(this, peer, item.uid, item.image);
+            boolean sent;
+            if (item.image == null) {
+                MessageMetaStore.Reply reply = MessageMetaStore.getReply(this, item.uid);
+                sent = PeerClient.sendMessage(this, peer, item.uid, item.text,
+                        reply == null ? "" : reply.replyId,
+                        reply == null ? "" : reply.quote);
+            } else {
+                sent = PeerClient.sendImage(this, peer, item.uid, item.image);
+            }
             if (!sent) break;
             MessageSink.setStatus(this, item.id, MessageStorage.STATUS_DONE);
             changed = true;

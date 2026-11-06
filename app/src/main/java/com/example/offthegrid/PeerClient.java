@@ -57,8 +57,14 @@ public final class PeerClient {
     }
 
     public static boolean sendMessage(Context context, String peer, String uid, String text) {
+        return sendMessage(context, peer, uid, text, "", "");
+    }
+
+    public static boolean sendMessage(Context context, String peer, String uid, String text,
+                                      String replyId, String quote) {
         return sendAndAwaitAck(peer, Wire.message(
-                Profile.getName(context), Profile.getId(context), uid, text, ""), TIMEOUT_MS);
+                Profile.getName(context), Profile.getId(context), uid, text, "",
+                replyId, quote), TIMEOUT_MS);
     }
 
     public static boolean sendImage(Context context, String peer, String uid, String image) {
@@ -76,6 +82,18 @@ public final class PeerClient {
     public static boolean sendFriend(Context context, String peer, String action) {
         return sendAndAwaitAck(peer, Wire.friend(
                 Profile.getName(context), Profile.getId(context), action), TIMEOUT_MS);
+    }
+
+    public static boolean sendTyping(Context context, String peer, boolean typing) {
+        return sendAndAwaitAck(peer, Wire.typing(
+                Profile.getName(context), Profile.getId(context), typing), TIMEOUT_MS);
+    }
+
+    public static boolean sendReaction(Context context, String peer, String targetId,
+                                       String emoji, String kind) {
+        return sendAndAwaitAck(peer, Wire.react(
+                        Profile.getName(context), Profile.getId(context), targetId, emoji, kind),
+                TIMEOUT_MS);
     }
 
     public static Bitmap fetchAvatar(Context context, String peer) {
