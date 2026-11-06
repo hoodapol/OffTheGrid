@@ -36,6 +36,7 @@ public class DiscoverFragment extends Fragment {
         adapter = new PeerAdapter(this::openChat);
         binding.rvPeers.setLayoutManager(new LinearLayoutManager(requireContext()));
         binding.rvPeers.setAdapter(adapter);
+        binding.btnRefreshNearby.setOnClickListener(v -> refreshNearby());
         refreshPeers();
         return binding.getRoot();
     }
@@ -76,6 +77,23 @@ public class DiscoverFragment extends Fragment {
         binding.tvNearbyWifiWarning.setVisibility(empty && !onWifi() ? View.VISIBLE : View.GONE);
     }
 
+    private void refreshNearby() {
+        Context context = requireContext();
+        binding.btnRefreshNearby.setEnabled(false);
+        binding.btnRefreshNearby.setAlpha(0.4f);
+        binding.btnRefreshNearby.animate().rotationBy(360f).setDuration(800).start();
+        ListenerService.restartDiscovery(context);
+        AvatarCache.forceRefresh(context);
+        PresenceMonitor.sweepNow(context);
+        refreshPeers();
+        main.postDelayed(() -> {
+            if (binding != null) {
+                binding.btnRefreshNearby.setEnabled(true);
+                binding.btnRefreshNearby.setAlpha(1f);
+            }
+        }, 2000);
+    }
+
     private void openChat(String peer) {
         Intent intent = new Intent(requireContext(), ChatActivity.class);
         intent.putExtra(ChatActivity.EXTRA_PEER_NAME, peer);
@@ -84,6 +102,7 @@ public class DiscoverFragment extends Fragment {
 
     @Override
     public void onDestroyView() {
+        main.removeCallbacksAndMessages(null);
         super.onDestroyView();
         binding = null;
     }

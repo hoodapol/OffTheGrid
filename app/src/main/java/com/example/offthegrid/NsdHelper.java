@@ -64,6 +64,27 @@ public final class NsdHelper {
             }
         };
 
+        try {
+            nsd.registerService(info, NsdManager.PROTOCOL_DNS_SD, registrationListener);
+        } catch (IllegalArgumentException e) {
+            Log.w(TAG, "NSD registration failed", e);
+        }
+        startDiscovery();
+    }
+
+    public void rediscover() {
+        NsdManager.DiscoveryListener old = discoveryListener;
+        if (old != null) {
+            try {
+                nsd.stopServiceDiscovery(old);
+            } catch (IllegalArgumentException e) {
+                Log.w(TAG, "Rediscover stop failed", e);
+            }
+        }
+        startDiscovery();
+    }
+
+    private void startDiscovery() {
         discoveryListener = new NsdManager.DiscoveryListener() {
             @Override
             public void onDiscoveryStarted(String serviceType) {
@@ -102,10 +123,9 @@ public final class NsdHelper {
         };
 
         try {
-            nsd.registerService(info, NsdManager.PROTOCOL_DNS_SD, registrationListener);
             nsd.discoverServices(SERVICE_TYPE, NsdManager.PROTOCOL_DNS_SD, discoveryListener);
         } catch (IllegalArgumentException e) {
-            Log.w(TAG, "NSD start failed", e);
+            Log.w(TAG, "NSD discovery start failed", e);
         }
     }
 

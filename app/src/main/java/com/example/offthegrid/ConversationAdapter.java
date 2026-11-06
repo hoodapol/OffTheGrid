@@ -119,10 +119,26 @@ public class ConversationAdapter extends RecyclerView.Adapter<RecyclerView.ViewH
     }
 
     private void bindRequest(RequestHolder holder, FriendStore.Friend friend) {
-        holder.avatar.setText(initial(friend.name));
+        Context context = holder.itemView.getContext();
         holder.name.setText(friend.name);
+        Bitmap bitmap = avatarFor(context, friend.name);
+        if (bitmap != null) {
+            holder.avatarImage.setImageBitmap(bitmap);
+            holder.avatarImage.setVisibility(View.VISIBLE);
+            holder.avatar.setVisibility(View.GONE);
+        } else {
+            holder.avatarImage.setVisibility(View.GONE);
+            holder.avatar.setVisibility(View.VISIBLE);
+            holder.avatar.setText(initial(friend.name));
+        }
         holder.accept.setOnClickListener(v -> requestListener.onAccept(friend));
         holder.decline.setOnClickListener(v -> requestListener.onDecline(friend));
+        AvatarCache.request(context, friend.name, () -> {
+            int index = holder.getBindingAdapterPosition();
+            if (index != RecyclerView.NO_POSITION) {
+                notifyItemChanged(index);
+            }
+        });
     }
 
     private void bindChat(ChatHolder holder, Conversation item) {
@@ -230,6 +246,7 @@ public class ConversationAdapter extends RecyclerView.Adapter<RecyclerView.ViewH
 
     static class RequestHolder extends RecyclerView.ViewHolder {
         final TextView avatar;
+        final ImageView avatarImage;
         final TextView name;
         final View accept;
         final View decline;
@@ -237,6 +254,7 @@ public class ConversationAdapter extends RecyclerView.Adapter<RecyclerView.ViewH
         RequestHolder(View itemView) {
             super(itemView);
             avatar = itemView.findViewById(R.id.tvRequestAvatar);
+            avatarImage = itemView.findViewById(R.id.ivRequestAvatar);
             name = itemView.findViewById(R.id.tvRequestName);
             accept = itemView.findViewById(R.id.btnRequestAccept);
             decline = itemView.findViewById(R.id.btnRequestDecline);

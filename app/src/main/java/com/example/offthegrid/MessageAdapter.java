@@ -18,6 +18,8 @@ import android.view.LayoutInflater;
 import android.view.MotionEvent;
 import android.view.View;
 import android.view.ViewGroup;
+import android.view.animation.AlphaAnimation;
+import android.view.animation.Animation;
 import android.widget.ImageView;
 import android.widget.TextView;
 
@@ -42,6 +44,7 @@ public class MessageAdapter extends RecyclerView.Adapter<MessageAdapter.ViewHold
     private static final int TYPE_RECEIVED = 1;
     private static final int TYPE_NOTE = 2;
     private static final int TYPE_DATE = 3;
+    private static final int TYPE_TYPING = 4;
     private static final int QUOTE_ALPHA = 170;
     private static final long SECONDS_LIMIT = 100000000000L;
 
@@ -61,6 +64,7 @@ public class MessageAdapter extends RecyclerView.Adapter<MessageAdapter.ViewHold
 
     private final List<Row> rows = new ArrayList<>();
     private final OnMessageActionListener listener;
+    private boolean typing;
 
     public MessageAdapter(OnMessageActionListener listener) {
         this.listener = listener;
@@ -75,6 +79,8 @@ public class MessageAdapter extends RecyclerView.Adapter<MessageAdapter.ViewHold
             layout = R.layout.item_chat_note;
         } else if (viewType == TYPE_DATE) {
             layout = R.layout.item_chat_date;
+        } else if (viewType == TYPE_TYPING) {
+            layout = R.layout.item_chat_typing;
         } else if (viewType == TYPE_SENT) {
             layout = R.layout.item_message_sent;
         } else {
@@ -89,30 +95,44 @@ public class MessageAdapter extends RecyclerView.Adapter<MessageAdapter.ViewHold
         Row row = rows.get(position);
         Context context = holder.itemView.getContext();
         if (row.type == TYPE_NOTE) return;
+        if (row.type == TYPE_TYPING) {
+            AlphaAnimation pulse = new AlphaAnimation(0.25f, 1f);
+            pulse.setDuration(600);
+            pulse.setRepeatCount(Animation.INFINITE);
+            pulse.setRepeatMode(Animation.REVERSE);
+            holder.dots.startAnimation(pulse);
+            return;
+        }
         if (row.type == TYPE_DATE) {
             holder.date.setText(dateLabel(context, row.time));
             return;
         }
         Message message = row.message;
+        String time = timeLabel(context, message.getTimestamp());
         Bitmap bitmap = message.hasImage()
                 ? ImageStore.thumbnail(context, message.getImage())
                 : null;
         if (bitmap != null) {
-            holder.text.setVisibility(View.GONE);
-            holder.text.setOnTouchListener(null);
+            holder.bubble.setVisibility(View.GONE);
+            holder.bubble.setOnTouchListener(null);
             holder.image.setVisibility(View.VISIBLE);
             holder.image.setImageBitmap(bitmap);
             attachGestures(holder.image, message);
+            holder.imageTime.setText(time);
+            holder.imageTime.setVisibility(time.isEmpty() ? View.GONE : View.VISIBLE);
             showImageHearts(holder, message);
         } else {
             holder.image.setVisibility(View.GONE);
             holder.image.setOnTouchListener(null);
+            holder.imageTime.setVisibility(View.GONE);
             if (holder.hearts != null) holder.hearts.setVisibility(View.GONE);
-            holder.text.setVisibility(View.VISIBLE);
+            holder.bubble.setVisibility(View.VISIBLE);
             holder.text.setText(message.hasImage()
                     ? context.getString(R.string.photo_missing)
                     : bubbleText(holder.text, message));
-            attachGestures(holder.text, message);
+            holder.time.setText(time);
+            holder.time.setVisibility(time.isEmpty() ? View.GONE : View.VISIBLE);
+            attachGestures(holder.bubble, message);
         }
         if (holder.status != null) {
             if (message.isPending()) {
@@ -164,19 +184,18 @@ public class MessageAdapter extends RecyclerView.Adapter<MessageAdapter.ViewHold
     private SpannableStringBuilder heartsText(TextView view, int count) {
         SpannableStringBuilder builder = new SpannableStringBuilder();
         int size = Math.round(view.getTextSize() * 1.2f);
-        for (int i = 0; i < count; i++) {
-            if (i > 0) builder.append(" ");
-            int start = builder.length();
-            builder.append(" ");
-            Drawable heart = ContextCompat.getDrawable(view.getContext(), R.drawable.ic_heart_ios);
-            if (heart != null) {
-                if (heart.getConstantState() != null) {
-                    heart = heart.getConstantState().newDrawable().mutate();
-                }
-                heart.setBounds(0, 0, size, size);
-                builder.setSpan(new ImageSpan(heart, ImageSpan.ALIGN_BASELINE), start,
-                        start + 1, Spanned.SPAN_EXCLUSIVE_EXCLUSIVE);
+        builder.append(" ");
+        Drawable heart = ContextCompat.getDrawable(view.getContext(), R.drawable.ic_heart_ios);
+        if (heart != null) {
+            if (heart.getConstantState() != null) {
+                heart = heart.getConstantState().newDrawable().mutate();
             }
+            heart.setBounds(0, 0, size, size);
+            builder.setSpan(new ImageSpan(heart, ImageSpan.ALIGN_BASELINE), 0,
+                    1, Spanned.SPAN_EXCLUSIVE_EXCLUSIVE);
+        }
+        if (count > 1) {
+            builder.append(" ").append(String.valueOf(count));
         }
         return builder;
     }
@@ -209,6 +228,11 @@ public class MessageAdapter extends RecyclerView.Adapter<MessageAdapter.ViewHold
 
     private static long millis(long time) {
         return time < SECONDS_LIMIT ? time * 1000 : time;
+    }
+
+    private static String timeLabel(Context context, long time) {
+        if (time <= 0) return "";
+        return DateFormat.getTimeFormat(context).format(new Date(millis(time)));
     }
 
     private static long dayOf(long time) {
@@ -259,7 +283,31 @@ public class MessageAdapter extends RecyclerView.Adapter<MessageAdapter.ViewHold
             boolean last = i == newMessages.size() - 1;
             rows.add(new Row(message.isSent() ? TYPE_SENT : TYPE_RECEIVED, message, time, last));
         }
+        if (typing) {
+            rows.add(new Row(TYPE_TYPING, null, 0, false));
+        }
         notifyDataSetChanged();
+    }
+
+    public void setTyping(boolean value) {
+        if (typing == value) return;
+        typing = value;
+        if (value) {
+            rows.add(new Row(TYPE_TYPING, null, 0, false));
+            notifyItemInserted(rows.size() - 1);
+        } else {
+            int last = rows.size() - 1;
+            if (last >= 0 && rows.get(last).type == TYPE_TYPING) {
+                rows.remove(last);
+                notifyItemRemoved(last);
+            }
+        }
+    }
+
+    @Override
+    public void onViewRecycled(@NonNull ViewHolder holder) {
+        if (holder.dots != null) holder.dots.clearAnimation();
+        super.onViewRecycled(holder);
     }
 
     public boolean hasPending() {
@@ -270,7 +318,11 @@ public class MessageAdapter extends RecyclerView.Adapter<MessageAdapter.ViewHold
     }
 
     static class ViewHolder extends RecyclerView.ViewHolder {
+        final View bubble;
         final TextView text;
+        final TextView time;
+        final TextView imageTime;
+        final TextView dots;
         final ImageView image;
         final TextView status;
         final TextView hearts;
@@ -278,7 +330,11 @@ public class MessageAdapter extends RecyclerView.Adapter<MessageAdapter.ViewHold
 
         ViewHolder(View itemView) {
             super(itemView);
+            bubble = itemView.findViewById(R.id.bubble);
             text = itemView.findViewById(R.id.tvText);
+            time = itemView.findViewById(R.id.tvTime);
+            imageTime = itemView.findViewById(R.id.tvImageTime);
+            dots = itemView.findViewById(R.id.tvTypingDots);
             image = itemView.findViewById(R.id.ivImage);
             status = itemView.findViewById(R.id.tvStatus);
             hearts = itemView.findViewById(R.id.tvImageHearts);

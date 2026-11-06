@@ -9,20 +9,37 @@
     android:paddingEnd="64dp"
     android:paddingBottom="4dp">
 
-    <TextView
-        android:id="@+id/tvText"
+    <LinearLayout
+        android:id="@+id/bubble"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
         android:background="@drawable/bg_message_received"
         android:elevation="1dp"
-        android:maxWidth="288dp"
+        android:orientation="vertical"
         android:paddingStart="15dp"
-        android:paddingTop="10dp"
-        android:paddingEnd="15dp"
-        android:paddingBottom="10dp"
-        android:text="@string/message_placeholder"
-        android:textColor="?android:attr/textColorPrimary"
-        android:textSize="15sp" />
+        android:paddingTop="9dp"
+        android:paddingEnd="12dp"
+        android:paddingBottom="5dp">
+
+        <TextView
+            android:id="@+id/tvText"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:maxWidth="261dp"
+            android:text="@string/message_placeholder"
+            android:textColor="?android:attr/textColorPrimary"
+            android:textSize="15sp" />
+
+        <TextView
+            android:id="@+id/tvTime"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_gravity="end"
+            android:layout_marginTop="2dp"
+            android:alpha="0.75"
+            android:textColor="@color/otg_text_secondary"
+            android:textSize="11sp" />
+    </LinearLayout>
 
     <ImageView
         android:id="@+id/ivImage"
@@ -32,6 +49,16 @@
         android:contentDescription="@string/photo_description"
         android:maxHeight="320dp"
         android:scaleType="fitCenter"
+        android:visibility="gone" />
+
+    <TextView
+        android:id="@+id/tvImageTime"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="2dp"
+        android:layout_marginEnd="4dp"
+        android:textColor="@color/otg_text_secondary"
+        android:textSize="11sp"
         android:visibility="gone" />
 
     <TextView

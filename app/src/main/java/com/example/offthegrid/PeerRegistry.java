@@ -59,6 +59,10 @@ public final class PeerRegistry {
         }
     }
 
+    public static void touch() {
+        notifyChanged();
+    }
+
     public static Address get(String key) {
         return PEERS.get(key);
     }

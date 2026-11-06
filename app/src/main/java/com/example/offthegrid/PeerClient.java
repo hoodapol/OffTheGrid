@@ -42,6 +42,20 @@ public final class PeerClient {
         }
     }
 
+    public static Wire.Packet identity(Context context, String peer) {
+        PeerRegistry.Address address = PeerRegistry.get(peer);
+        if (address == null) return null;
+        try {
+            Wire.Packet reply = requestIdentity(context, address.host, address.port);
+            if (reply != null && address.deviceId.equals(reply.device)) {
+                return reply;
+            }
+            return null;
+        } catch (IOException e) {
+            return null;
+        }
+    }
+
     private static Wire.Packet requestIdentity(Context context, String host, int port)
             throws IOException {
         try (Socket socket = open(host, port, TIMEOUT_MS);
@@ -99,7 +113,7 @@ public final class PeerClient {
     public static Bitmap fetchAvatar(Context context, String peer) {
         PeerRegistry.Address address = PeerRegistry.get(peer);
         if (address == null) return null;
-        try (Socket socket = open(address.host, address.port, TIMEOUT_MS);
+        try (Socket socket = open(address.host, address.port, IMAGE_TIMEOUT_MS);
              BufferedWriter out = Wire.writer(socket);
              BufferedReader in = Wire.reader(socket)) {
             Wire.writeLine(out, Wire.getAvatar(Profile.getName(context), Profile.getId(context)));

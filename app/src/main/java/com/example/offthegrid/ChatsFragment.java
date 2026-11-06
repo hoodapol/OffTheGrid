@@ -136,9 +136,6 @@ public class ChatsFragment extends Fragment
         Set<String> friendNames = new HashSet<>();
         for (FriendStore.Friend friend : FriendStore.list(context, FriendStore.STATE_FRIEND)) {
             friendNames.add(friend.name);
-            if (!conversations.containsKey(friend.name)) {
-                conversations.put(friend.name, new Conversation(friend.name, "", 0, false));
-            }
         }
 
         List<Conversation> pinned = new ArrayList<>();

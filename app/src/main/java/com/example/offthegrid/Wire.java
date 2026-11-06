@@ -26,6 +26,7 @@ public final class Wire {
     public static final String FRIEND = "FRIEND";
     public static final String TYPING = "TYPING";
     public static final String REACT = "REACT";
+    public static final String READ = "READ";
 
     private static final String TAG = "Wire";
     private static final int LOG_LIMIT = 300;
@@ -67,6 +68,14 @@ public final class Wire {
 
     public static String hello(String name, String device) {
         return build(HELLO, name, device, "", "", "", "", "");
+    }
+
+    public static String hello(String name, String device, boolean friend, String avatarVersion) {
+        return build(HELLO, name, device, "", friend ? "1" : "0", "", avatarVersion, "");
+    }
+
+    public static String read(String name, String device, String id) {
+        return build(READ, name, device, id, "", "", "", "");
     }
 
     public static String getProfile(String name, String device) {
@@ -128,7 +137,7 @@ public final class Wire {
             }
             if (ACK.equals(type)) return new Packet(ACK, "", "", "", "", "", "");
             if (name.isEmpty() || device.isEmpty()) return null;
-            if (HELLO.equals(type)) return new Packet(HELLO, name, device, "", "", "", "");
+            if (HELLO.equals(type)) return new Packet(HELLO, name, device, "", text, "", ref);
             if (GET_PROFILE.equals(type)) {
                 return new Packet(GET_PROFILE, name, device, "", "", "", "");
             }
@@ -140,6 +149,7 @@ public final class Wire {
             if (FRIEND.equals(type)) return new Packet(FRIEND, name, device, "", text, "", "");
             if (TYPING.equals(type)) return new Packet(TYPING, name, device, "", text, "", "");
             if (id.isEmpty()) return null;
+            if (READ.equals(type)) return new Packet(READ, name, device, id, "", "", "");
             if (REACT.equals(type)) {
                 return new Packet(REACT, name, device, id, text, "", ref, "", "");
             }

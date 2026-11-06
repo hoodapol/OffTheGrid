@@ -11,6 +11,7 @@ import android.content.Context;
 import android.content.Intent;
 import android.content.pm.PackageManager;
 import android.database.Cursor;
+import android.graphics.BitmapFactory;
 import android.net.Uri;
 import android.os.Build;
 
@@ -24,7 +25,8 @@ import java.util.List;
 
 public final class MessageSink {
 
-    private static final String CHANNEL_ID = "incoming_messages";
+    private static final String CHANNEL_ID = "incoming_messages_v2";
+    private static final String OLD_CHANNEL_ID = "incoming_messages";
 
     private MessageSink() {
     }
@@ -150,9 +152,11 @@ public final class MessageSink {
 
     public static void createChannel(Context context) {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+            NotificationManager manager = context.getSystemService(NotificationManager.class);
+            manager.deleteNotificationChannel(OLD_CHANNEL_ID);
             NotificationChannel channel = new NotificationChannel(
-                    CHANNEL_ID, "Incoming messages", NotificationManager.IMPORTANCE_DEFAULT);
-            context.getSystemService(NotificationManager.class).createNotificationChannel(channel);
+                    CHANNEL_ID, "Incoming messages", NotificationManager.IMPORTANCE_HIGH);
+            manager.createNotificationChannel(channel);
         }
     }
 
@@ -176,10 +180,16 @@ public final class MessageSink {
                 .getPendingIntent(peer.hashCode(),
                         PendingIntent.FLAG_IMMUTABLE | PendingIntent.FLAG_UPDATE_CURRENT);
         Notification notification = new NotificationCompat.Builder(context, CHANNEL_ID)
-                .setSmallIcon(android.R.drawable.stat_notify_chat)
+                .setSmallIcon(R.drawable.ic_stat_offthegrid)
+                .setColor(ContextCompat.getColor(context, R.color.otg_primary))
+                .setLargeIcon(BitmapFactory.decodeResource(context.getResources(),
+                        R.drawable.ic_notification_large))
                 .setContentTitle(peer)
                 .setContentText(body)
                 .setContentIntent(pendingIntent)
+                .setPriority(NotificationCompat.PRIORITY_HIGH)
+                .setCategory(NotificationCompat.CATEGORY_MESSAGE)
+                .setDefaults(NotificationCompat.DEFAULT_ALL)
                 .setAutoCancel(true)
                 .build();
         NotificationManagerCompat.from(context).notify(peer.hashCode(), notification);
