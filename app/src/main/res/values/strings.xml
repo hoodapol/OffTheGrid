@@ -210,4 +210,19 @@
     <string name="friends_screen_empty_hint">Tap someone\'s photo on the Nearby tab to see their profile and send a friend request.</string>
     <string name="friends_status_online">Nearby now</string>
     <string name="friends_status_offline">Not nearby</string>
+    <string name="refresh_description">Refresh</string>
+    <string name="profile_message">Message</string>
+    <string name="visibility_notification_title_off">OffTheGrid is waiting for Wi‑Fi</string>
+    <string name="visibility_notification_text_off">Connect to Wi‑Fi to be visible to people nearby</string>
+    <string name="event_airplane_on">Airplane mode on - OffTheGrid cannot reach nearby phones</string>
+    <string name="event_airplane_off">Airplane mode off - looking for nearby phones again</string>
+    <string name="event_battery_low">Battery low - charge soon to stay visible</string>
+    <string name="event_battery_ok">Battery is OK again</string>
+    <string name="event_power_save_on">Battery saver on - nearby updates may be slower</string>
+    <string name="event_power_save_off">Battery saver off</string>
+    <string name="cloud_online_count">Cloud: %d device(s) online</string>
+    <string name="export_xml">Export chat as XML</string>
+    <string name="export_done_title">Chat exported</string>
+    <string name="export_done_body">%1$d messages (%2$d sent, %3$d received)\n\nSaved to:\n%4$s</string>
+    <string name="export_failed">Could not export this chat</string>
 </resources>

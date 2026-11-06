@@ -1,7 +1,5 @@
 package com.example.offthegrid;
 
-import android.content.ClipData;
-import android.content.ClipboardManager;
 import android.content.Context;
 import android.content.Intent;
 import android.graphics.Bitmap;
@@ -10,11 +8,14 @@ import android.graphics.drawable.ColorDrawable;
 import android.os.Bundle;
 import android.text.format.DateFormat;
 import android.view.LayoutInflater;
+import android.view.MenuItem;
 import android.view.View;
 import android.view.ViewGroup;
-import android.widget.EditText;
+import android.view.WindowManager;
 import android.widget.Toast;
 
+import androidx.activity.result.ActivityResultLauncher;
+import androidx.activity.result.contract.ActivityResultContracts;
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 import androidx.appcompat.app.AlertDialog;
@@ -23,10 +24,15 @@ import androidx.fragment.app.Fragment;
 import androidx.recyclerview.widget.ConcatAdapter;
 import androidx.recyclerview.widget.GridLayoutManager;
 
+import com.example.offthegrid.databinding.DialogEditPostBinding;
 import com.example.offthegrid.databinding.DialogPostBinding;
+import com.example.offthegrid.databinding.DialogProgressBinding;
 import com.example.offthegrid.databinding.FragmentProfileBinding;
 import com.example.offthegrid.databinding.ItemProfileHeaderBinding;
+import com.google.firebase.auth.FirebaseAuth;
+import com.google.firebase.auth.FirebaseUser;
 
+import java.util.ArrayList;
 import java.util.Date;
 import java.util.List;
 import java.util.Locale;
@@ -37,6 +43,19 @@ public class ProfileFragment extends Fragment {
     private ItemProfileHeaderBinding header;
     private PostAdapter postAdapter;
     private boolean busy;
+    private Runnable pendingAction;
+    private AlertDialog progressDialog;
+    private DialogProgressBinding progressView;
+
+    private final ActivityResultLauncher<Intent> authLauncher = registerForActivityResult(
+            new ActivityResultContracts.StartActivityForResult(), result -> {
+                Runnable action = pendingAction;
+                pendingAction = null;
+                if (result.getResultCode() == android.app.Activity.RESULT_OK && action != null
+                        && isAdded()) {
+                    action.run();
+                }
+            });
 
     @Nullable
     @Override
@@ -56,6 +75,8 @@ public class ProfileFragment extends Fragment {
         header = ItemProfileHeaderBinding.inflate(inflater, binding.rvProfile, false);
         header.btnEditProfile.setOnClickListener(v -> openEditor());
         header.btnMore.setOnClickListener(this::showMenu);
+        header.btnStatFriends.setOnClickListener(v -> startActivity(
+                new Intent(requireContext(), FriendsActivity.class)));
         header.btnNewPost.setOnClickListener(v -> startActivity(
                 new Intent(requireContext(), CreatePostActivity.class)));
 
@@ -68,6 +89,11 @@ public class ProfileFragment extends Fragment {
     @Override
     public void onResume() {
         super.onResume();
+        refresh();
+    }
+
+    private void refresh() {
+        if (header == null) return;
         Context context = requireContext();
         String name = Profile.getName(context);
         header.tvProfileName.setText(name);
@@ -112,11 +138,23 @@ public class ProfileFragment extends Fragment {
         header.tvPostsEmpty.setVisibility(posts.isEmpty() ? View.VISIBLE : View.GONE);
     }
 
+    private String heartNames(Context context, String uid) {
+        List<String> names = new ArrayList<>();
+        for (String device : MessageMetaStore.heartedBy(context, uid)) {
+            FriendStore.Friend friend = FriendStore.get(context, device);
+            names.add(friend != null ? friend.name : getString(R.string.heart_someone));
+        }
+        return String.join(", ", names);
+    }
+
     private void showPost(Post post) {
         Context context = requireContext();
         Date date = new Date(post.timestamp);
         String when = DateFormat.getMediumDateFormat(context).format(date) + "  "
                 + DateFormat.getTimeFormat(context).format(date);
+        if (PostStore.isEdited(context, post.uid)) {
+            when = when + "  \u00B7  " + getString(R.string.post_edited_label);
+        }
 
         DialogPostBinding card = DialogPostBinding.inflate(LayoutInflater.from(context));
         Bitmap bitmap = post.hasImage() ? ImageStore.thumbnail(context, post.image) : null;
@@ -129,13 +167,20 @@ public class ProfileFragment extends Fragment {
             card.tvDialogNote.setText(post.text);
             card.tvDialogNote.setVisibility(View.VISIBLE);
         }
-        card.tvDialogDate.setText(when);
+        String hearted = heartNames(context, post.uid);
+        card.tvDialogDate.setText(hearted.isEmpty()
+                ? when
+                : when + "\n" + MessageMetaStore.HEART + " " + hearted);
 
         AlertDialog dialog = new AlertDialog.Builder(context)
                 .setView(card.getRoot())
                 .create();
         dialog.getWindow().setBackgroundDrawable(new ColorDrawable(Color.TRANSPARENT));
         card.btnDialogClose.setOnClickListener(v -> dialog.dismiss());
+        card.btnDialogEdit.setOnClickListener(v -> {
+            dialog.dismiss();
+            showEdit(post);
+        });
         card.btnDialogDelete.setOnClickListener(v -> {
             PostStore.delete(context, post);
             loadPosts(context);
@@ -144,17 +189,101 @@ public class ProfileFragment extends Fragment {
         dialog.show();
     }
 
+    private void showEdit(Post post) {
+        Context context = requireContext();
+        DialogEditPostBinding form = DialogEditPostBinding.inflate(LayoutInflater.from(context));
+        form.etEditPost.setText(post.text);
+        form.etEditPost.setSelection(post.text.length());
+        int[] visibility = {post.visibility};
+        Runnable paint = () -> {
+            form.tvEditVisEveryone.setSelected(visibility[0] == PostStorage.VISIBILITY_EVERYONE);
+            form.tvEditVisFriends.setSelected(visibility[0] == PostStorage.VISIBILITY_FRIENDS);
+        };
+        form.tvEditVisEveryone.setOnClickListener(v -> {
+            visibility[0] = PostStorage.VISIBILITY_EVERYONE;
+            paint.run();
+        });
+        form.tvEditVisFriends.setOnClickListener(v -> {
+            visibility[0] = PostStorage.VISIBILITY_FRIENDS;
+            paint.run();
+        });
+        paint.run();
+
+        AlertDialog dialog = new AlertDialog.Builder(context)
+                .setTitle(R.string.post_edit_title)
+                .setView(form.getRoot())
+                .create();
+        form.btnEditCancel.setOnClickListener(v -> dialog.dismiss());
+        form.btnEditSave.setOnClickListener(v -> {
+            String text = form.etEditPost.getText().toString().trim();
+            if (text.isEmpty() && !post.hasImage()) {
+                Toast.makeText(context, R.string.post_empty_error, Toast.LENGTH_SHORT).show();
+                return;
+            }
+            boolean saved = PostStore.update(context, post, text, visibility[0]);
+            dialog.dismiss();
+            loadPosts(context);
+            Toast.makeText(context,
+                    saved ? R.string.post_edit_done : R.string.photo_failed,
+                    Toast.LENGTH_SHORT).show();
+        });
+        dialog.getWindow().setSoftInputMode(
+                WindowManager.LayoutParams.SOFT_INPUT_STATE_ALWAYS_VISIBLE);
+        dialog.show();
+        form.etEditPost.requestFocus();
+    }
+
+    private boolean signedIn() {
+        return FirebaseAuth.getInstance().getCurrentUser() != null;
+    }
+
+    private String email() {
+        FirebaseUser user = FirebaseAuth.getInstance().getCurrentUser();
+        return user == null || user.getEmail() == null ? "" : user.getEmail();
+    }
+
+    private void requireLogin(Runnable action) {
+        if (signedIn()) {
+            action.run();
+            return;
+        }
+        pendingAction = action;
+        authLauncher.launch(new Intent(requireContext(), AuthActivity.class));
+    }
+
     private void showMenu(View anchor) {
         PopupMenu menu = new PopupMenu(requireContext(), anchor);
         menu.getMenuInflater().inflate(R.menu.menu_profile, menu.getMenu());
+        menu.getMenu().findItem(R.id.action_visibility)
+                .setChecked(VisibilityPrefs.isStayVisible(requireContext()));
+        MenuItem account = menu.getMenu().findItem(R.id.action_account);
+        account.setVisible(signedIn());
+        if (signedIn()) {
+            account.setTitle(getString(R.string.auth_signed_in, email()));
+        }
+        MenuItem signOut = menu.getMenu().findItem(R.id.action_signout);
+        signOut.setVisible(signedIn());
         menu.setOnMenuItemClickListener(item -> {
             int id = item.getItemId();
+            if (id == R.id.action_account) {
+                return true;
+            }
+            if (id == R.id.action_visibility) {
+                toggleVisibility();
+                return true;
+            }
             if (id == R.id.action_backup) {
-                confirmBackup();
+                if (!busy) requireLogin(this::confirmBackup);
                 return true;
             }
             if (id == R.id.action_restore) {
-                askRestoreCode();
+                if (!busy) requireLogin(this::confirmRestore);
+                return true;
+            }
+            if (id == R.id.action_signout) {
+                FirebaseAuth.getInstance().signOut();
+                Toast.makeText(requireContext(), R.string.auth_signed_out,
+                        Toast.LENGTH_SHORT).show();
                 return true;
             }
             return false;
@@ -162,8 +291,46 @@ public class ProfileFragment extends Fragment {
         menu.show();
     }
 
+    private void toggleVisibility() {
+        Context context = requireContext();
+        boolean on = !VisibilityPrefs.isStayVisible(context);
+        VisibilityPrefs.setStayVisible(context, on);
+        ListenerService.start(context);
+        Toast.makeText(context, on ? R.string.visibility_on : R.string.visibility_off,
+                Toast.LENGTH_LONG).show();
+    }
+
     private void openEditor() {
         startActivity(new Intent(requireContext(), EditProfileActivity.class));
+    }
+
+    private FirestoreBackup.Progress openProgress(int title) {
+        DialogProgressBinding view = DialogProgressBinding.inflate(
+                LayoutInflater.from(requireContext()));
+        view.tvProgressStep.setText(R.string.progress_prepare);
+        view.barProgress.setProgress(0);
+        view.tvProgressPercent.setText(getString(R.string.progress_percent, 0));
+        progressView = view;
+        progressDialog = new AlertDialog.Builder(requireContext())
+                .setTitle(title)
+                .setView(view.getRoot())
+                .setCancelable(false)
+                .create();
+        progressDialog.show();
+        return (percent, label) -> {
+            if (view != progressView || !isAdded()) return;
+            view.barProgress.setProgress(percent);
+            view.tvProgressPercent.setText(getString(R.string.progress_percent, percent));
+            view.tvProgressStep.setText(label);
+        };
+    }
+
+    private void closeProgress() {
+        if (progressDialog != null) {
+            progressDialog.dismiss();
+            progressDialog = null;
+        }
+        progressView = null;
     }
 
     private void confirmBackup() {
@@ -178,23 +345,25 @@ public class ProfileFragment extends Fragment {
 
     private void runBackup() {
         busy = true;
-        Toast.makeText(requireContext(), R.string.backup_working, Toast.LENGTH_SHORT).show();
-        FirestoreBackup.backup(requireContext(), new FirestoreBackup.Callback() {
+        FirestoreBackup.Progress progress = openProgress(R.string.progress_backup_title);
+        FirestoreBackup.backup(requireContext(), progress, new FirestoreBackup.Callback() {
             @Override
             public void onDone(int count) {
                 busy = false;
+                closeProgress();
                 if (!isAdded()) return;
                 if (count == 0) {
                     Toast.makeText(requireContext(), R.string.backup_nothing,
                             Toast.LENGTH_LONG).show();
                 } else {
-                    showBackupCode(count);
+                    showBackupDone(count);
                 }
             }
 
             @Override
             public void onError() {
                 busy = false;
+                closeProgress();
                 if (!isAdded()) return;
                 Toast.makeText(requireContext(), R.string.firebase_failed,
                         Toast.LENGTH_LONG).show();
@@ -202,62 +371,46 @@ public class ProfileFragment extends Fragment {
         });
     }
 
-    private void showBackupCode(int count) {
-        String code = Profile.getId(requireContext());
+    private void showBackupDone(int count) {
         new AlertDialog.Builder(requireContext())
                 .setTitle(R.string.backup_done_title)
-                .setMessage(getString(R.string.backup_done_body, count, code))
-                .setPositiveButton(R.string.backup_copy, (dialog, which) -> copyCode(code))
-                .setNegativeButton(android.R.string.ok, null)
+                .setMessage(getString(R.string.backup_done_body, count, email()))
+                .setPositiveButton(android.R.string.ok, null)
                 .show();
     }
 
-    private void copyCode(String code) {
-        ClipboardManager clipboard = (ClipboardManager)
-                requireContext().getSystemService(Context.CLIPBOARD_SERVICE);
-        clipboard.setPrimaryClip(ClipData.newPlainText("backup code", code));
-        Toast.makeText(requireContext(), R.string.backup_code_copied, Toast.LENGTH_SHORT).show();
-    }
-
-    private void askRestoreCode() {
+    private void confirmRestore() {
         if (busy) return;
-        EditText input = new EditText(requireContext());
-        input.setSingleLine(true);
-        input.setHint(R.string.restore_hint);
-        AlertDialog dialog = new AlertDialog.Builder(requireContext())
+        new AlertDialog.Builder(requireContext())
                 .setTitle(R.string.restore_title)
-                .setMessage(R.string.restore_message)
-                .setPositiveButton(R.string.restore_action,
-                        (d, which) -> runRestore(input.getText().toString().trim()))
+                .setMessage(getString(R.string.restore_message, email()))
+                .setPositiveButton(R.string.restore_action, (dialog, which) -> runRestore())
                 .setNegativeButton(R.string.cancel, null)
-                .create();
-        int pad = (int) (24 * getResources().getDisplayMetrics().density);
-        dialog.setView(input, pad, pad / 2, pad, 0);
-        dialog.show();
+                .show();
     }
 
-    private void runRestore(String code) {
-        if (code.isEmpty()) {
-            Toast.makeText(requireContext(), R.string.restore_code_needed,
-                    Toast.LENGTH_SHORT).show();
-            return;
-        }
+    private void runRestore() {
         busy = true;
-        Toast.makeText(requireContext(), R.string.restore_working, Toast.LENGTH_SHORT).show();
-        FirestoreBackup.restore(requireContext(), code, new FirestoreBackup.Callback() {
+        FirestoreBackup.Progress progress = openProgress(R.string.progress_restore_title);
+        FirestoreBackup.restore(requireContext(), progress, new FirestoreBackup.Callback() {
             @Override
             public void onDone(int count) {
                 busy = false;
+                closeProgress();
                 if (!isAdded()) return;
                 String message = count == 0
                         ? getString(R.string.restore_nothing)
                         : getString(R.string.restore_done, count);
                 Toast.makeText(requireContext(), message, Toast.LENGTH_LONG).show();
+                if (count > 0) {
+                    refresh();
+                }
             }
 
             @Override
             public void onError() {
                 busy = false;
+                closeProgress();
                 if (!isAdded()) return;
                 Toast.makeText(requireContext(), R.string.firebase_failed,
                         Toast.LENGTH_LONG).show();
@@ -268,6 +421,7 @@ public class ProfileFragment extends Fragment {
     @Override
     public void onDestroyView() {
         super.onDestroyView();
+        closeProgress();
         binding = null;
         header = null;
     }

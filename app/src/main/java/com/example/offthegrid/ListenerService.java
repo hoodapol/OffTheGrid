@@ -7,9 +7,14 @@ import android.app.PendingIntent;
 import android.app.Service;
 import android.content.Context;
 import android.content.Intent;
+import android.net.ConnectivityManager;
+import android.net.Network;
+import android.net.NetworkCapabilities;
 import android.net.wifi.WifiManager;
 import android.os.Build;
+import android.os.Handler;
 import android.os.IBinder;
+import android.os.Looper;
 import android.util.Log;
 
 import androidx.annotation.Nullable;
@@ -35,13 +40,29 @@ public class ListenerService extends Service {
     private static final String TAG = "ListenerService";
     private static final int READ_TIMEOUT_MS = 10000;
     private static final int NOTIFICATION_ID = 4101;
-    private static final String CHANNEL_ID = "visibility";
+    private static final String CHANNEL_ID = "visibility_v3";
+    private static final String OLD_CHANNEL_ID = "visibility";
+    private static final String OLD_CHANNEL_ID_V2 = "visibility_v2";
+    private static volatile ListenerService instance;
 
     private ExecutorService workers;
     private NsdHelper nsdHelper;
     private WifiManager.MulticastLock multicastLock;
     private volatile ServerSocket serverSocket;
     private volatile boolean running;
+    private ConnectivityManager.NetworkCallback networkCallback;
+    private SystemEventReceiver systemReceiver;
+    private final Handler main = new Handler(Looper.getMainLooper());
+    private final Runnable notificationRefresh = this::refreshNotification;
+
+    public static void restartDiscovery(Context context) {
+        ListenerService service = instance;
+        if (service == null) {
+            start(context);
+            return;
+        }
+        service.restartNsd();
+    }
 
     public static void start(Context context) {
         Intent intent = new Intent(context, ListenerService.class);
@@ -73,8 +94,110 @@ public class ListenerService extends Service {
             acquireMulticastLock();
             nsdHelper = new NsdHelper(getApplicationContext());
             nsdHelper.start();
+            instance = this;
+            PresenceMonitor.start(getApplicationContext());
+            watchNetwork();
+            watchSystemEvents();
+            CloudPresence.goOnline(getApplicationContext());
         }
         return START_NOT_STICKY;
+    }
+
+    private synchronized void restartNsd() {
+        if (!running || nsdHelper == null) return;
+        nsdHelper.rediscover();
+    }
+
+    private void watchSystemEvents() {
+        try {
+            systemReceiver = new SystemEventReceiver();
+            ContextCompat.registerReceiver(this, systemReceiver, SystemEventReceiver.filter(),
+                    ContextCompat.RECEIVER_NOT_EXPORTED);
+        } catch (RuntimeException e) {
+            systemReceiver = null;
+            Log.w(TAG, "System event watch failed", e);
+        }
+    }
+
+    private void unwatchSystemEvents() {
+        if (systemReceiver == null) return;
+        try {
+            unregisterReceiver(systemReceiver);
+        } catch (RuntimeException e) {
+            Log.w(TAG, "System event unwatch failed", e);
+        }
+        systemReceiver = null;
+    }
+
+    private void watchNetwork() {
+        ConnectivityManager manager =
+                (ConnectivityManager) getSystemService(Context.CONNECTIVITY_SERVICE);
+        if (manager == null) return;
+        networkCallback = new ConnectivityManager.NetworkCallback() {
+            @Override
+            public void onAvailable(Network network) {
+                scheduleNotificationRefresh();
+            }
+
+            @Override
+            public void onLost(Network network) {
+                scheduleNotificationRefresh();
+            }
+
+            @Override
+            public void onCapabilitiesChanged(Network network,
+                                              NetworkCapabilities capabilities) {
+                scheduleNotificationRefresh();
+            }
+        };
+        try {
+            manager.registerDefaultNetworkCallback(networkCallback);
+        } catch (RuntimeException e) {
+            networkCallback = null;
+            Log.w(TAG, "Network watch failed", e);
+        }
+    }
+
+    private void unwatchNetwork() {
+        main.removeCallbacks(notificationRefresh);
+        if (networkCallback == null) return;
+        ConnectivityManager manager =
+                (ConnectivityManager) getSystemService(Context.CONNECTIVITY_SERVICE);
+        try {
+            if (manager != null) {
+                manager.unregisterNetworkCallback(networkCallback);
+            }
+        } catch (RuntimeException e) {
+            Log.w(TAG, "Network unwatch failed", e);
+        }
+        networkCallback = null;
+    }
+
+    private void scheduleNotificationRefresh() {
+        main.removeCallbacks(notificationRefresh);
+        main.postDelayed(notificationRefresh, 700);
+    }
+
+    private void refreshNotification() {
+        if (!running || !VisibilityPrefs.isStayVisible(this)) return;
+        try {
+            getSystemService(NotificationManager.class)
+                    .notify(NOTIFICATION_ID, buildNotification());
+        } catch (RuntimeException e) {
+            Log.w(TAG, "Notification refresh failed", e);
+        }
+    }
+
+    private boolean onWifi() {
+        ConnectivityManager manager =
+                (ConnectivityManager) getSystemService(Context.CONNECTIVITY_SERVICE);
+        if (manager == null) return false;
+        Network network = manager.getActiveNetwork();
+        if (network == null) return false;
+        NetworkCapabilities capabilities = manager.getNetworkCapabilities(network);
+        return capabilities != null
+                && (capabilities.hasTransport(NetworkCapabilities.TRANSPORT_WIFI)
+                || capabilities.hasTransport(NetworkCapabilities.TRANSPORT_ETHERNET));
     }
 
     private void enterForeground() {
@@ -87,9 +210,13 @@ public class ListenerService extends Service {
 
     private Notification buildNotification() {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+            NotificationManager manager = getSystemService(NotificationManager.class);
+            manager.deleteNotificationChannel(OLD_CHANNEL_ID);
+            manager.deleteNotificationChannel(OLD_CHANNEL_ID_V2);
             NotificationChannel channel = new NotificationChannel(
-                    CHANNEL_ID, "Visibility", NotificationManager.IMPORTANCE_LOW);
-            getSystemService(NotificationManager.class).createNotificationChannel(channel);
+                    CHANNEL_ID, "Visibility", NotificationManager.IMPORTANCE_NONE);
+            channel.setShowBadge(false);
+            manager.createNotificationChannel(channel);
         }
         Intent open = new Intent(this, DiscoverActivity.class);
         open.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_CLEAR_TOP);
@@ -99,15 +226,23 @@ public class ListenerService extends Service {
         stop.setAction(ACTION_STOP);
         PendingIntent stopPending = PendingIntent.getService(this, 1, stop,
                 PendingIntent.FLAG_IMMUTABLE | PendingIntent.FLAG_UPDATE_CURRENT);
+        boolean wifi = onWifi();
         return new NotificationCompat.Builder(this, CHANNEL_ID)
-                .setSmallIcon(android.R.drawable.stat_notify_chat)
-                .setContentTitle(getString(R.string.visibility_notification_title))
-                .setContentText(getString(R.string.visibility_notification_text))
+                .setSmallIcon(R.drawable.ic_stat_offthegrid)
+                .setColor(ContextCompat.getColor(this, R.color.otg_primary))
+                .setContentTitle(getString(wifi
+                        ? R.string.visibility_notification_title
+                        : R.string.visibility_notification_title_off))
+                .setContentText(getString(wifi
+                        ? R.string.visibility_notification_text
+                        : R.string.visibility_notification_text_off))
                 .setContentIntent(openPending)
                 .addAction(0, getString(R.string.visibility_stop), stopPending)
                 .setOngoing(true)
                 .setOnlyAlertOnce(true)
-                .setPriority(NotificationCompat.PRIORITY_LOW)
+                .setShowWhen(false)
+                .setVisibility(NotificationCompat.VISIBILITY_SECRET)
+                .setPriority(NotificationCompat.PRIORITY_MIN)
                 .build();
     }
 
@@ -161,7 +296,9 @@ public class ListenerService extends Service {
             Context app = getApplicationContext();
             if (Wire.HELLO.equals(packet.type)) {
                 rememberSender(connection, packet);
-                Wire.writeLine(out, Wire.hello(Profile.getName(this), Profile.getId(this)));
+                String avatar = Profile.getAvatar(this);
+                Wire.writeLine(out, Wire.hello(Profile.getName(this), Profile.getId(this),
+                        FriendStore.isFriend(app, packet.device), avatar == null ? "" : avatar));
             } else if (Wire.MSG.equals(packet.type)) {
                 if (isSelf(packet)) return;
                 String key = rememberSender(connection, packet);
@@ -263,6 +400,11 @@ public class ListenerService extends Service {
     public void onDestroy() {
         Log.d(TAG, "onDestroy");
         running = false;
+        unwatchNetwork();
+        unwatchSystemEvents();
+        CloudPresence.goOffline();
+        PresenceMonitor.stop();
+        instance = null;
         if (nsdHelper != null) {
             nsdHelper.stop();
         }

@@ -9,6 +9,7 @@ import android.content.Intent;
 import android.content.IntentFilter;
 import android.content.pm.PackageManager;
 import android.database.Cursor;
+import android.graphics.Bitmap;
 import android.net.Uri;
 import android.os.Build;
 import android.os.Bundle;
@@ -34,6 +35,9 @@ import androidx.recyclerview.widget.LinearLayoutManager;
 
 import com.example.offthegrid.databinding.ActivityChatBinding;
 
+import org.xmlpull.v1.XmlPullParserException;
+
+import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
@@ -56,6 +60,7 @@ public class ChatActivity extends AppCompatActivity {
     private String pendingSave;
     private int pingGeneration;
     private boolean typingActive;
+    private long newestShown = Long.MIN_VALUE;
     private long lastTypingSent;
     private final ExecutorService pinger = Executors.newSingleThreadExecutor();
     private final ExecutorService imageWorker = Executors.newSingleThreadExecutor();
@@ -93,7 +98,7 @@ public class ChatActivity extends AppCompatActivity {
 
     private final TypingTracker.Listener typingListener = peer -> {
         if (peerName != null && peerName.equals(peer)) {
-            refreshTitle();
+            main.post(this::refreshTitle);
         }
     };
 
@@ -171,7 +176,22 @@ public class ChatActivity extends AppCompatActivity {
     private void refreshTitle() {
         binding.tvChatWith.setText(peerName);
         boolean typing = TypingTracker.isTyping(peerName);
-        binding.tvChatSubtitle.setVisibility(typing ? View.VISIBLE : View.GONE);
+        boolean atBottom = !binding.rvMessages.canScrollVertically(1);
+        adapter.setTyping(typing);
+        if (typing && atBottom) {
+            binding.rvMessages.scrollToPosition(adapter.getItemCount() - 1);
+        }
+    }
+
+    private void applyAvatar() {
+        if (isFinishing() || isDestroyed()) return;
+        Bitmap bitmap = AvatarCache.cached(peerName);
+        if (bitmap != null) {
+            binding.ivChatAvatar.setImageBitmap(bitmap);
+            binding.ivChatAvatar.setVisibility(View.VISIBLE);
+        } else {
+            binding.ivChatAvatar.setVisibility(View.GONE);
+        }
     }
 
     private void sendTyping(boolean typing) {
@@ -231,8 +251,12 @@ public class ChatActivity extends AppCompatActivity {
             main.post(() -> {
                 if (generation != pingGeneration) return;
                 binding.statusView.setConnected(online);
-                if (online && adapter.hasPending()) {
-                    retryPending();
+                applyAvatar();
+                if (online) {
+                    if (adapter.hasPending()) {
+                        retryPending();
+                    }
+                    flushReactions();
                 }
                 main.postDelayed(() -> {
                     if (generation == pingGeneration) {
@@ -291,8 +315,13 @@ public class ChatActivity extends AppCompatActivity {
                 }
             }
         }
+        long newest = list.isEmpty() ? -1 : list.get(list.size() - 1).getId();
+        boolean stickToBottom = newest != newestShown;
+        newestShown = newest;
         adapter.setMessages(list);
-        binding.rvMessages.scrollToPosition(adapter.getItemCount() - 1);
+        if (stickToBottom) {
+            binding.rvMessages.scrollToPosition(adapter.getItemCount() - 1);
+        }
         ChatStateStore.markRead(this, peerName);
     }
 
@@ -324,18 +353,24 @@ public class ChatActivity extends AppCompatActivity {
         String peer = peerName;
         boolean on = !message.isHeartedByMe();
         MessageMetaStore.setHeart(app, uid, myId, on);
+        PendingReactions.put(app, peer, uid, on);
         loadMessages();
+        flushReactions();
+    }
+
+    private void flushReactions() {
+        Context app = getApplicationContext();
+        String peer = peerName;
         reactWorker.execute(() -> {
-            boolean ok = PeerClient.sendReaction(app, peer, uid,
-                    on ? MessageMetaStore.HEART : "", "msg");
-            if (!ok) {
-                main.post(() -> {
-                    MessageMetaStore.setHeart(app, uid, myId, !on);
-                    if (!isFinishing() && !isDestroyed()) {
-                        loadMessages();
-                    }
-                    Toast.makeText(app, R.string.heart_failed, Toast.LENGTH_SHORT).show();
-                });
+            for (PendingReactions.Item item : PendingReactions.list(app, peer)) {
+                if (!MessageMetaStore.messageExists(app, peer, item.uid)) {
+                    PendingReactions.remove(app, peer, item.uid, item.on);
+                    continue;
+                }
+                boolean ok = PeerClient.sendReaction(app, peer, item.uid,
+                        item.on ? MessageMetaStore.HEART : "", "msg");
+                if (!ok) return;
+                PendingReactions.remove(app, peer, item.uid, item.on);
             }
         });
     }
@@ -465,6 +500,33 @@ public class ChatActivity extends AppCompatActivity {
                 .show();
     }
 
+    private void exportXml() {
+        Context app = getApplicationContext();
+        String peer = peerName;
+        imageWorker.execute(() -> {
+            ChatXml.Summary summary = null;
+            try {
+                summary = ChatXml.export(app, peer);
+            } catch (IOException | XmlPullParserException e) {
+                Log.w(TAG, "XML export failed", e);
+            }
+            ChatXml.Summary result = summary;
+            main.post(() -> {
+                if (isFinishing() || isDestroyed()) return;
+                if (result == null) {
+                    Toast.makeText(this, R.string.export_failed, Toast.LENGTH_LONG).show();
+                    return;
+                }
+                new AlertDialog.Builder(this)
+                        .setTitle(R.string.export_done_title)
+                        .setMessage(getString(R.string.export_done_body, result.total,
+                                result.sent, result.received, result.path))
+                        .setPositiveButton(android.R.string.ok, null)
+                        .show();
+            });
+        });
+    }
+
     @Override
     public boolean onCreateOptionsMenu(Menu menu) {
         getMenuInflater().inflate(R.menu.menu_chat, menu);
@@ -475,6 +537,10 @@ public class ChatActivity extends AppCompatActivity {
     public boolean onOptionsItemSelected(MenuItem item) {
         if (item.getItemId() == R.id.action_delete_chat) {
             confirmDeleteChat();
+            return true;
+        }
+        if (item.getItemId() == R.id.action_export_xml) {
+            exportXml();
             return true;
         }
         return super.onOptionsItemSelected(item);
@@ -494,6 +560,8 @@ public class ChatActivity extends AppCompatActivity {
         ContextCompat.registerReceiver(this, receiver, filter, ContextCompat.RECEIVER_NOT_EXPORTED);
         TypingTracker.addListener(typingListener);
         refreshTitle();
+        applyAvatar();
+        AvatarCache.request(this, peerName, this::applyAvatar);
         loadMessages();
         pingGeneration++;
         pingLoop(pingGeneration);
