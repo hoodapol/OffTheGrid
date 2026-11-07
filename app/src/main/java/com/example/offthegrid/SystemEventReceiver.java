@@ -30,6 +30,7 @@ public class SystemEventReceiver extends BroadcastReceiver {
         if (Intent.ACTION_AIRPLANE_MODE_CHANGED.equals(action)) {
             boolean on = intent.getBooleanExtra("state", false);
             toast(app, on ? R.string.event_airplane_on : R.string.event_airplane_off);
+            ListenerService.airplaneChanged();
             if (!on) {
                 new Handler(Looper.getMainLooper()).postDelayed(
                         () -> ListenerService.restartDiscovery(app), RESTART_DELAY_MS);

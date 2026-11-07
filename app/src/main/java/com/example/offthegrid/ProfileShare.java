@@ -45,6 +45,7 @@ public final class ProfileShare {
                 item.put("text", post.text);
                 item.put("time", post.timestamp);
                 item.put("visibility", post.visibility);
+                item.put("edited", PostStore.isEdited(context, post.uid));
                 item.put("hearts", MessageMetaStore.heartCount(context, post.uid));
                 item.put("liked", requester != null
                         && MessageMetaStore.isHeartedBy(context, post.uid, requester));

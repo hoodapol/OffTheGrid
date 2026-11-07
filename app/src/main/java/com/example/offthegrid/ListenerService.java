@@ -15,6 +15,7 @@ import android.os.Build;
 import android.os.Handler;
 import android.os.IBinder;
 import android.os.Looper;
+import android.provider.Settings;
 import android.util.Log;
 
 import androidx.annotation.Nullable;
@@ -64,9 +65,21 @@ public class ListenerService extends Service {
         service.restartNsd();
     }
 
+    public static boolean airplaneOn(Context context) {
+        return Settings.Global.getInt(context.getContentResolver(),
+                Settings.Global.AIRPLANE_MODE_ON, 0) != 0;
+    }
+
+    public static void airplaneChanged() {
+        ListenerService service = instance;
+        if (service != null) {
+            service.applyForeground();
+        }
+    }
+
     public static void start(Context context) {
         Intent intent = new Intent(context, ListenerService.class);
-        if (VisibilityPrefs.isStayVisible(context)) {
+        if (VisibilityPrefs.isStayVisible(context) && !airplaneOn(context)) {
             ContextCompat.startForegroundService(context, intent);
         } else {
             context.startService(intent);
@@ -82,11 +95,7 @@ public class ListenerService extends Service {
             stopSelf();
             return START_NOT_STICKY;
         }
-        if (VisibilityPrefs.isStayVisible(this)) {
-            enterForeground();
-        } else {
-            stopForeground(true);
-        }
+        applyForeground();
         if (!running) {
             running = true;
             workers = Executors.newCachedThreadPool();
@@ -101,6 +110,14 @@ public class ListenerService extends Service {
             CloudPresence.goOnline(getApplicationContext());
         }
         return START_NOT_STICKY;
+    }
+
+    private void applyForeground() {
+        if (VisibilityPrefs.isStayVisible(this) && !airplaneOn(this)) {
+            enterForeground();
+        } else {
+            stopForeground(true);
+        }
     }
 
     private synchronized void restartNsd() {
@@ -179,7 +196,7 @@ public class ListenerService extends Service {
     }
 
     private void refreshNotification() {
-        if (!running || !VisibilityPrefs.isStayVisible(this)) return;
+        if (!running || !VisibilityPrefs.isStayVisible(this) || airplaneOn(this)) return;
         try {
             getSystemService(NotificationManager.class)
                     .notify(NOTIFICATION_ID, buildNotification());
@@ -356,7 +373,11 @@ public class ListenerService extends Service {
             if (!FriendStore.isFriend(app, packet.device) || !postExists(app, packet.id)) {
                 return false;
             }
+            boolean already = MessageMetaStore.isHeartedBy(app, packet.id, packet.device);
             MessageMetaStore.setHeart(app, packet.id, packet.device, on);
+            if (on && !already) {
+                MessageSink.notifyPostLike(app, key);
+            }
             return true;
         }
         if ("msg".equals(kind)) {

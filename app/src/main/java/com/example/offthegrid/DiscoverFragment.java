@@ -19,6 +19,7 @@ import androidx.recyclerview.widget.LinearLayoutManager;
 
 import com.example.offthegrid.databinding.FragmentDiscoverBinding;
 
+import java.util.ArrayList;
 import java.util.List;
 
 public class DiscoverFragment extends Fragment {
@@ -27,6 +28,7 @@ public class DiscoverFragment extends Fragment {
     private PeerAdapter adapter;
     private final Handler main = new Handler(Looper.getMainLooper());
     private final PeerRegistry.Listener registryListener = () -> main.post(this::refreshPeers);
+    private final FriendStore.Listener friendListener = () -> main.post(this::refreshPeers);
 
     @Nullable
     @Override
@@ -45,12 +47,14 @@ public class DiscoverFragment extends Fragment {
     public void onStart() {
         super.onStart();
         PeerRegistry.addListener(registryListener);
+        FriendStore.addListener(friendListener);
         refreshPeers();
     }
 
     @Override
     public void onStop() {
         PeerRegistry.removeListener(registryListener);
+        FriendStore.removeListener(friendListener);
         super.onStop();
     }
 
@@ -69,8 +73,20 @@ public class DiscoverFragment extends Fragment {
 
     private void refreshPeers() {
         if (binding == null) return;
+        Context context = getContext();
+        if (context == null) return;
         List<String> names = PeerRegistry.names();
-        adapter.setAll(names);
+        List<String> friends = new ArrayList<>();
+        List<String> others = new ArrayList<>();
+        for (String name : names) {
+            PeerRegistry.Address address = PeerRegistry.get(name);
+            if (address != null && FriendStore.isFriend(context, address.deviceId)) {
+                friends.add(name);
+            } else {
+                others.add(name);
+            }
+        }
+        adapter.setAll(friends, others);
         boolean empty = names.isEmpty();
         binding.tvPeersEmpty.setVisibility(empty ? View.VISIBLE : View.GONE);
         binding.rvPeers.setVisibility(empty ? View.GONE : View.VISIBLE);

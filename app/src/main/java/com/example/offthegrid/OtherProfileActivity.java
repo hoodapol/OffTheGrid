@@ -348,6 +348,9 @@ public class OtherProfileActivity extends AppCompatActivity implements FriendSto
         Date date = new Date(post.timestamp);
         String when = DateFormat.getMediumDateFormat(this).format(date) + "  "
                 + DateFormat.getTimeFormat(this).format(date);
+        if (post.edited) {
+            when = when + "  \u00B7  " + getString(R.string.post_edited_label);
+        }
 
         DialogPostBinding card = DialogPostBinding.inflate(LayoutInflater.from(this));
         card.btnDialogEdit.setVisibility(View.GONE);

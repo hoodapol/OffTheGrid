@@ -11,10 +11,9 @@ import android.content.Context;
 import android.content.Intent;
 import android.content.pm.PackageManager;
 import android.database.Cursor;
-import android.graphics.BitmapFactory;
 import android.net.Uri;
 import android.os.Build;
-
+import android.graphics.BitmapFactory;
 import androidx.core.app.NotificationCompat;
 import androidx.core.app.NotificationManagerCompat;
 import androidx.core.app.TaskStackBuilder;
@@ -158,6 +157,33 @@ public final class MessageSink {
                     CHANNEL_ID, "Incoming messages", NotificationManager.IMPORTANCE_HIGH);
             manager.createNotificationChannel(channel);
         }
+    }
+
+    @SuppressLint("MissingPermission")
+    public static void notifyPostLike(Context context, String name) {
+        if (name == null) return;
+        if (Build.VERSION.SDK_INT >= 33
+                && ContextCompat.checkSelfPermission(context, Manifest.permission.POST_NOTIFICATIONS)
+                != PackageManager.PERMISSION_GRANTED) {
+            return;
+        }
+        createChannel(context);
+        Intent open = new Intent(context, DiscoverActivity.class);
+        open.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_CLEAR_TOP);
+        PendingIntent pendingIntent = PendingIntent.getActivity(context,
+                ("like:" + name).hashCode(), open,
+                PendingIntent.FLAG_IMMUTABLE | PendingIntent.FLAG_UPDATE_CURRENT);
+        Notification notification = new NotificationCompat.Builder(context, CHANNEL_ID)
+                .setSmallIcon(R.drawable.ic_stat_offthegrid)
+                .setColor(ContextCompat.getColor(context, R.color.otg_primary))
+                .setContentTitle(name)
+                .setContentText(context.getString(R.string.post_like_notification))
+                .setContentIntent(pendingIntent)
+                .setPriority(NotificationCompat.PRIORITY_HIGH)
+                .setDefaults(NotificationCompat.DEFAULT_ALL)
+                .setAutoCancel(true)
+                .build();
+        NotificationManagerCompat.from(context).notify(("like:" + name).hashCode(), notification);
     }
 
     @SuppressLint("MissingPermission")

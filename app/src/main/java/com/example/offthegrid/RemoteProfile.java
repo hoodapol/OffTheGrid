@@ -26,6 +26,7 @@ public final class RemoteProfile {
         public final int visibility;
         public int hearts;
         public boolean liked;
+        public boolean edited;
 
         public RemotePost(String id, String text, Bitmap image, long timestamp, int visibility) {
             this(id, text, image, timestamp, visibility, 0, false);
@@ -78,9 +79,11 @@ public final class RemoteProfile {
                     String text = limit(item.optString("text"), MAX_TEXT);
                     Bitmap image = decode(item.optString("image"));
                     if (text.isEmpty() && image == null) continue;
-                    posts.add(new RemotePost(item.optString("id"), text, image,
+                    RemotePost post = new RemotePost(item.optString("id"), text, image,
                             item.optLong("time"), item.optInt("visibility"),
-                            Math.max(0, item.optInt("hearts")), item.optBoolean("liked")));
+                            Math.max(0, item.optInt("hearts")), item.optBoolean("liked"));
+                    post.edited = item.optBoolean("edited");
+                    posts.add(post);
                 }
             }
             return new RemoteProfile(

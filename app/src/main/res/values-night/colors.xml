@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <color name="otg_primary">#B4C093</color>
+    <color name="otg_primary">#9AA77D</color>
     <color name="otg_on_primary">#232523</color>
     <color name="otg_accent">#5E9C78</color>
     <color name="otg_background">#232523</color>
@@ -13,7 +13,7 @@
     <color name="otg_bar_dark">#232523</color>
 
     <color name="otg_pill_brown">#3F3F3F</color>
-    <color name="otg_pill_sand">#B4C093</color>
+    <color name="otg_pill_sand">#9AA77D</color>
     <color name="otg_pill_sand_light">#EDE9A0</color>
     <color name="otg_pill_rose">#7FA68A</color>
 </resources>
